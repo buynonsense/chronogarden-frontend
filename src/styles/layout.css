@@ -1,0 +1,108 @@
+/* 布局辅助类 */
+.full-width {
+  width: 100%;
+}
+
+.content-wrapper {
+  width: 100%;
+  max-width: 1600px;
+  min-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* 卡片网格系统 */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+/* 两列布局 */
+.two-column-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 25px;
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .two-column-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .content-wrapper {
+    min-width: auto;
+    width: 95%;
+  }
+}
+
+/* 平板响应式 */
+@media (max-width: 992px) {
+  .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+}
+
+/* 移动设备响应式 */
+@media (max-width: 768px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .content-wrapper {
+    padding: 0 15px;
+    width: 100%;
+  }
+  
+  /* 调整页面容器内边距 */
+  .dashboard-container,
+  .plants-container,
+  .eras-container,
+  .home-container,
+  .care-records-container {
+    padding: 15px 10px;
+  }
+  
+  /* 调整卡片内边距 */
+  .el-card__body {
+    padding: 15px !important;
+  }
+  
+  /* 调整表单大小 */
+  .el-form-item {
+    margin-bottom: 15px;
+  }
+  
+  /* 确保按钮在移动端更大，易于触摸 */
+  .el-button {
+    min-height: 44px;
+  }
+}
+
+/* 添加小屏手机的特殊处理 */
+@media (max-width: 480px) {
+  .two-column-grid, 
+  .three-column-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  /* 调整页面标题大小 */
+  h1 {
+    font-size: 1.5em !important;
+  }
+  
+  /* 减小内边距 */
+  .content-wrapper {
+    padding: 0 10px;
+  }
+  
+  /* 表格变为可滚动 */
+  .table-container {
+    overflow-x: auto;
+  }
+}

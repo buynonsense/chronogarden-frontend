@@ -31,14 +31,20 @@ const isAuthenticated = computed(() => userStore.isAuthenticated)
 </template>
 
 <style>
-/* 整体不设置 max-width 限制 */
+#app {
+  min-height: 100vh;
+  width: 100%;
+}
+
 body,
 html {
   margin: 0;
   padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+  /* 防止水平滚动 */
 }
 
-/* 导航栏全宽，占据整个窗口 */
 .app-header {
   width: 100%;
   position: sticky;
@@ -48,19 +54,22 @@ html {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 主体内容采用居中且最大宽度限制 */
 .app-main {
   background-color: var(--bg-light);
   padding: 20px 0;
+  width: 100%;
+  min-height: calc(100vh - 130px);
+  /* 确保内容区域足够高 */
 }
 
 .main-container {
-  max-width: 1200px;
+  max-width: 1600px;
+  width: 90%;
   margin: 0 auto;
   padding: 0 20px;
+  box-sizing: border-box;
 }
 
-/* 页脚保持居中 */
 .app-footer {
   width: 100%;
   background-color: var(--primary-color);
@@ -69,9 +78,29 @@ html {
 }
 
 .footer-content {
-  max-width: 1200px;
+  max-width: 1600px;
+  width: 90%;
   margin: 0 auto;
   text-align: center;
   padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* 增加移动端响应式调整 */
+@media (max-width: 768px) {
+
+  .main-container,
+  .footer-content {
+    width: 100%;
+    padding: 0 15px;
+  }
+
+  .app-main {
+    padding: 10px 0;
+  }
+
+  .footer-emoji {
+    font-size: 0.9em;
+  }
 }
 </style>

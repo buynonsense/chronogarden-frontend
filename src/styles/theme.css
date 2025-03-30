@@ -73,6 +73,7 @@ body {
 
 /* 表格样式 */
 .el-table {
+  width: 100%;
   border-radius: var(--border-radius-medium);
   overflow: hidden;
 }
@@ -90,11 +91,29 @@ body {
 .el-dialog {
   border-radius: var(--border-radius-large) !important;
   overflow: hidden;
+  max-width: 90%;
 }
 
 /* 标签样式 */
 .el-tag {
   border-radius: var(--border-radius-small) !important;
+}
+
+/* 修改主要组件容器 */
+.dashboard-container,
+.plants-container,
+.eras-container,
+.home-container,
+.care-records-container {
+  width: 100%;
+  max-width: none;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* 更新卡片网格布局 */
+.plants-grid, .eras-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 
 /* 移动设备响应式调整 */
