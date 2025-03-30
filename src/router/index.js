@@ -5,7 +5,6 @@ import Register from '../views/Register.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Plants from '../views/Plants.vue'
 import PlantDetail from '../views/PlantDetail.vue'
-import Eras from '../views/Eras.vue'
 import CareRecords from '../views/CareRecords.vue'
 import NotAuthorized from '../views/NotAuthorized.vue'  // 添加未授权页面
 
@@ -45,15 +44,15 @@ const routes = [
         component: PlantDetail,
         meta: { requiresAuth: true } // 添加权限控制
     },
+    // 删除独立的Eras路由
+    // 但保留重定向路由，以防有旧链接
     {
         path: '/eras',
-        name: 'Eras',
-        component: Eras,
-        meta: { requiresAuth: true } // 添加权限控制
+        redirect: '/plants'
     },
     {
         path: '/timenodes',
-        redirect: '/eras'
+        redirect: '/plants'
     },
     {
         path: '/care-records',

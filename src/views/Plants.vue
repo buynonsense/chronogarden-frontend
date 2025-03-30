@@ -1,9 +1,13 @@
 <template>
   <div class="plants-container">
-    <h1>植物图鉴</h1>
-    <p class="subtitle">探索不同时代的神奇植物</p>
+    <h1 class="page-title">植物图鉴 <span class="title-emoji">🌱</span></h1>
+    <p class="subtitle">穿越时空探索不同时代的神奇植物</p>
 
-    <EraTimeline @eraChanged="handleEraChange" />
+    <!-- 增强时间轴组件区域 -->
+    <div class="timeline-section">
+      <h2>时间旅行轴 <span class="title-emoji">🕰️</span></h2>
+      <EraTimeline @eraChanged="handleEraChange" />
+    </div>
 
     <el-card v-if="loading" class="loading-card">
       <el-skeleton :rows="4" animated />
@@ -110,6 +114,12 @@ onMounted(() => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .subtitle {
@@ -227,5 +237,42 @@ onMounted(() => {
 .empty-state {
   margin-top: 40px;
   text-align: center;
+}
+
+/* 添加时间轴区域样式 */
+.timeline-section {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: var(--border-radius-large);
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-section h2 {
+  font-size: 1.5em;
+  color: var(--primary-dark);
+  margin-top: 0;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-emoji {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

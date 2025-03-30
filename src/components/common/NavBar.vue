@@ -12,7 +12,7 @@
             <el-menu :default-active="activeIndex" mode="horizontal" router background-color="#57bc90" text-color="#fff"
                 active-text-color="#fffde7" class="nav-menu desktop-menu">
                 <el-menu-item index="/">首页 🏠</el-menu-item>
-                <el-menu-item index="/eras">时间节点 🕰️</el-menu-item>
+                <!-- <el-menu-item index="/eras">时间节点 🕰️</el-menu-item> -->
                 <el-menu-item index="/plants">植物图鉴 🌱</el-menu-item>
                 <div class="flex-spacer"></div>
                 <template v-if="isLoggedIn">
@@ -30,7 +30,7 @@
             <transition name="slide">
                 <div class="mobile-menu" v-if="mobileMenuOpen">
                     <router-link to="/" class="mobile-menu-item" @click="closeMobileMenu">首页 🏠</router-link>
-                    <router-link to="/eras" class="mobile-menu-item" @click="closeMobileMenu">时间节点 🕰️</router-link>
+                    <!-- <router-link to="/eras" class="mobile-menu-item" @click="closeMobileMenu">时间节点 🕰️</router-link> -->
                     <router-link to="/plants" class="mobile-menu-item" @click="closeMobileMenu">植物图鉴 🌱</router-link>
                     <template v-if="isLoggedIn">
                         <router-link to="/dashboard" class="mobile-menu-item" @click="closeMobileMenu">个人仪表盘
