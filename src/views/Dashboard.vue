@@ -1,61 +1,97 @@
 <template>
     <div class="dashboard-container">
-        <h1>欢迎回到您的时空花园</h1>
+        <h1 class="welcome-title">欢迎回到您的时空花园 <span class="welcome-emoji">🌈</span></h1>
 
         <el-row :gutter="20">
             <el-col :span="16">
-                <el-card class="dashboard-card">
+                <el-card class="dashboard-card garden-status-card">
                     <template #header>
                         <div class="card-header">
-                            <h3>我的花园状态</h3>
+                            <h3><span class="header-emoji">🌿</span> 我的花园状态</h3>
                         </div>
                     </template>
 
                     <el-empty v-if="!hasPlants" description="您还没有种植任何植物">
-                        <el-button type="primary" @click="$router.push('/plants')">开始种植</el-button>
+                        <el-button type="primary" @click="$router.push('/plants')" class="action-button">
+                            开始种植 <span class="btn-emoji">🌱</span>
+                        </el-button>
                     </el-empty>
 
                     <div v-else class="garden-overview">
-                        <p>您正在养护 {{ plantCount }} 种植物</p>
-                        <p>最近一次养护时间: {{ lastCareTime }}</p>
-                        <el-button type="primary" @click="$router.push('/carerecords')">查看养护记录</el-button>
+                        <div class="stat-box">
+                            <div class="stat-icon">🌿</div>
+                            <div class="stat-info">
+                                <div class="stat-value">{{ plantCount }}</div>
+                                <div class="stat-label">种植物</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-box">
+                            <div class="stat-icon">⏰</div>
+                            <div class="stat-info">
+                                <div class="stat-value">{{ lastCareTime }}</div>
+                                <div class="stat-label">最近养护</div>
+                            </div>
+                        </div>
+
+                        <el-button type="primary" @click="$router.push('/care-records')" class="view-records-btn">
+                            查看养护记录 <span class="btn-emoji">📝</span>
+                        </el-button>
                     </div>
                 </el-card>
             </el-col>
 
             <el-col :span="8">
-                <el-card class="dashboard-card">
+                <el-card class="dashboard-card quick-links-card">
                     <template #header>
                         <div class="card-header">
-                            <h3>快速导航</h3>
+                            <h3><span class="header-emoji">🚀</span> 快速导航</h3>
                         </div>
                     </template>
                     <div class="quick-links">
-                        <el-button @click="$router.push('/timenodes')">探索时间节点</el-button>
-                        <el-button @click="$router.push('/plants')">植物图鉴</el-button>
-                        <el-button @click="$router.push('/carerecords')">养护记录</el-button>
+                        <el-button @click="$router.push('/eras')" class="nav-button">
+                            <span class="btn-icon">🕰️</span> 探索时间节点
+                        </el-button>
+                        <el-button @click="$router.push('/plants')" class="nav-button">
+                            <span class="btn-icon">🌱</span> 植物图鉴
+                        </el-button>
+                        <el-button @click="$router.push('/care-records')" class="nav-button">
+                            <span class="btn-icon">📝</span> 养护记录
+                        </el-button>
                     </div>
                 </el-card>
             </el-col>
         </el-row>
 
-        <el-card class="dashboard-card" v-if="hasPlants">
+        <el-card class="dashboard-card plants-card" v-if="hasPlants">
             <template #header>
                 <div class="card-header">
-                    <h3>需要关注的植物</h3>
+                    <h3><span class="header-emoji">⚠️</span> 需要关注的植物</h3>
                 </div>
             </template>
-            <el-table :data="plantsNeedingCare" v-if="plantsNeedingCare.length > 0">
-                <el-table-column prop="name" label="植物名称"></el-table-column>
-                <el-table-column prop="status" label="状态"></el-table-column>
+            <el-table :data="plantsNeedingCare" v-if="plantsNeedingCare.length > 0" class="plants-table">
+                <el-table-column prop="name" label="植物名称" width="180">
+                    <template #default="scope">
+                        <div class="plant-name-cell">
+                            <span class="plant-emoji">🌱</span> {{ scope.row.name }}
+                        </div>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="status" label="状态" width="120">
+                    <template #default="scope">
+                        <el-tag type="warning" effect="light" class="status-tag">{{ scope.row.status }}</el-tag>
+                    </template>
+                </el-table-column>
                 <el-table-column prop="lastCareDate" label="上次养护"></el-table-column>
                 <el-table-column label="操作">
                     <template #default="scope">
-                        <el-button type="primary" size="small" @click="viewPlant(scope.row.id)">查看</el-button>
+                        <el-button type="primary" size="small" @click="viewPlant(scope.row.id)" class="view-btn">
+                            查看 <span class="btn-emoji">👀</span>
+                        </el-button>
                     </template>
                 </el-table-column>
             </el-table>
-            <el-empty v-else description="暂无需要关注的植物"></el-empty>
+            <el-empty v-else description="暂无需要关注的植物" class="empty-plants"></el-empty>
         </el-card>
     </div>
 </template>
@@ -166,18 +202,121 @@ onMounted(() => {
     padding: 20px;
 }
 
+.welcome-title {
+    text-align: center;
+    margin-bottom: 30px;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 2em;
+}
+
+.welcome-emoji {
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
 .dashboard-card {
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+    border-radius: var(--border-radius-large) !important;
+    overflow: hidden;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 20px rgba(87, 188, 144, 0.15) !important;
+}
+
+.garden-status-card {
+    height: 100%;
+}
+
+.quick-links-card {
+    height: 100%;
 }
 
 .garden-overview {
-    padding: 10px 0;
+    padding: 15px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.stat-box {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background-color: rgba(87, 188, 144, 0.1);
+    border-radius: var(--border-radius-medium);
+    width: 80%;
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.stat-info {
+    text-align: left;
+}
+
+.stat-value {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--primary-dark);
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
 }
 
 .quick-links {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
+    padding: 10px 0;
+}
+
+.nav-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: var(--border-radius-medium) !important;
+    transition: all 0.3s ease;
+}
+
+.btn-icon {
+    font-size: 1.2em;
+    transition: transform 0.3s ease;
+}
+
+.nav-button:hover .btn-icon {
+    transform: scale(1.2);
+}
+
+.action-button {
+    padding: 12px 25px;
+    font-size: 1.1em;
 }
 
 .card-header {
@@ -188,5 +327,57 @@ onMounted(() => {
 
 .card-header h3 {
     margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-emoji {
+    font-size: 1.3em;
+}
+
+.view-records-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.plants-table {
+    margin-top: 10px;
+}
+
+.plant-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.plant-emoji {
+    font-size: 1.2em;
+}
+
+.status-tag {
+    font-size: 0.9em;
+    padding: 4px 8px;
+    border-radius: 20px !important;
+}
+
+.view-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-emoji {
+    transition: transform 0.3s ease;
+}
+
+.view-btn:hover .btn-emoji {
+    transform: translateX(3px);
+}
+
+.empty-plants {
+    padding: 20px 0;
 }
 </style>

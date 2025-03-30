@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { login, register } from '../api/auth'
-import router from '../router'
 
+// 不要直接导入router，让调用者决定重定向
 export const useUserStore = defineStore('user', {
     state: () => ({
         token: localStorage.getItem('token') || '',
@@ -14,7 +14,6 @@ export const useUserStore = defineStore('user', {
             try {
                 const response = await login(userData)
                 this.setUserData(response.data, userData.username)
-                router.push('/dashboard')
                 return response
             } catch (error) {
                 throw error
@@ -24,7 +23,6 @@ export const useUserStore = defineStore('user', {
         async register(userData) {
             try {
                 const response = await register(userData)
-                router.push('/login')
                 return response
             } catch (error) {
                 throw error
@@ -45,7 +43,6 @@ export const useUserStore = defineStore('user', {
             this.isAuthenticated = false
             localStorage.removeItem('token')
             localStorage.removeItem('username')
-            router.push('/login')
         }
     }
 })

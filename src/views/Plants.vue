@@ -1,192 +1,231 @@
 <template>
-    <div class="plants-container">
-        <h1>植物图鉴</h1>
-        <div class="filters">
-            <el-select v-model="selectedTimeNode" placeholder="选择时间节点" clearable @change="loadPlants">
-                <el-option v-for="node in timeNodes" :key="node.id" :label="node.name" :value="node.id"></el-option>
-            </el-select>
-        </div>
+  <div class="plants-container">
+    <h1>植物图鉴</h1>
+    <p class="subtitle">探索不同时代的神奇植物</p>
 
-        <el-row :gutter="20" v-if="loading">
-            <el-col :span="24">
-                <el-skeleton :rows="10" animated />
-            </el-col>
-        </el-row>
+    <EraTimeline @eraChanged="handleEraChange" />
 
-        <el-row :gutter="20" v-else-if="plants.length > 0">
-            <el-col :xs="24" :sm="12" :md="8" :xl="6" v-for="plant in plants" :key="plant.id" class="plant-item">
-                <el-card class="plant-card" shadow="hover">
-                    <template #header>
-                        <div class="card-header">
-                            <h2>{{ plant.name }}</h2>
-                            <p class="scientific-name">{{ plant.scientificName }}</p>
-                        </div>
-                    </template>
-                    <div class="card-content">
-                        <p class="description">{{ truncateText(plant.description, 100) }}</p>
-                        <div class="plant-stats">
-                            <div class="stat">
-                                <div class="stat-label">浇水需求</div>
-                                <div class="stat-value">{{ plant.waterNeeds }}</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-label">光照需求</div>
-                                <div class="stat-value">{{ plant.lightNeeds }}</div>
-                            </div>
-                            <div class="stat">
-                                <div class="stat-label">土壤类型</div>
-                                <div class="stat-value">{{ plant.soilType }}</div>
-                            </div>
-                        </div>
-                        <div class="card-actions">
-                            <el-button type="primary" @click="viewDetail(plant.id)">查看详情</el-button>
-                        </div>
-                    </div>
-                </el-card>
-            </el-col>
-        </el-row>
+    <el-card v-if="loading" class="loading-card">
+      <el-skeleton :rows="4" animated />
+    </el-card>
 
-        <el-empty v-else description="暂无植物数据，请选择时间节点"></el-empty>
+    <div v-else-if="plants.length === 0" class="empty-state">
+      <el-empty description="当前时代没有植物记录" />
     </div>
+
+    <div v-else class="plants-grid">
+      <el-card v-for="plant in plants" :key="plant.id" class="plant-card" @click="viewPlantDetails(plant.id)">
+        <template #header>
+          <div class="plant-header">
+            <h3>{{ plant.name }} <span class="plant-emoji">🌱</span></h3>
+          </div>
+        </template>
+        <p class="scientific-name">{{ plant.scientificName }}</p>
+        <p class="description">{{ truncateText(plant.description, 100) }}</p>
+        <div class="plant-info">
+          <p v-if="plant.firstAppearance"><span class="info-emoji">🕰️</span> <strong>首次出现:</strong> {{
+            plant.firstAppearance }}
+          </p>
+          <p v-if="plant.extinctionTime"><span class="info-emoji">⌛</span> <strong>灭绝时间:</strong> {{
+            plant.extinctionTime }}</p>
+        </div>
+        <el-button type="primary" size="small" @click.stop="viewPlantDetails(plant.id)" class="view-details-btn">
+          查看详情 <span class="btn-emoji">👀</span>
+        </el-button>
+      </el-card>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { getPlantsByEra, getPlants } from '../api/plants';
 import { useRouter, useRoute } from 'vue-router';
-import { getPlants, getPlantsByTimeNode } from '../api/plants';
-import { getTimeNodes } from '../api/timeNodes';
 import { ElMessage } from 'element-plus';
+import EraTimeline from '../components/timenode/EraTimeline.vue';
 
 const router = useRouter();
 const route = useRoute();
 const plants = ref([]);
-const timeNodes = ref([]);
-const selectedTimeNode = ref(null);
 const loading = ref(true);
+const currentEra = ref(null);
 
-// 截断文本函数
+const handleEraChange = (era) => {
+  if (!era) return;
+
+  console.log('选择的时代:', era);
+  currentEra.value = era;
+  loadPlantsByEra(era.name);
+};
+
+const loadPlantsByEra = async (eraName) => {
+  loading.value = true;
+  try {
+    console.log('开始请求植物数据, era:', eraName);
+    const response = await getPlantsByEra(eraName);
+    console.log('获取植物数据成功:', response.data);
+    plants.value = response.data;
+  } catch (error) {
+    console.error('获取植物列表失败:', error);
+    ElMessage.error('获取植物列表失败');
+    plants.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
+const loadAllPlants = async () => {
+  loading.value = true;
+  try {
+    console.log('开始请求所有植物数据');
+    const response = await getPlants();
+    console.log('获取所有植物数据成功:', response.data);
+    plants.value = response.data;
+  } catch (error) {
+    console.error('获取植物列表失败:', error);
+    ElMessage.error('获取植物列表失败');
+    plants.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
+const viewPlantDetails = (plantId) => {
+  router.push(`/plant/${plantId}`);
+};
+
 const truncateText = (text, maxLength) => {
-    if (!text) return '';
-    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  if (!text) return '';
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 };
 
-// 加载时间节点
-const loadTimeNodes = async () => {
-    try {
-        const response = await getTimeNodes();
-        timeNodes.value = response.data;
-    } catch (error) {
-        console.error('获取时间节点失败:', error);
-        ElMessage.error('获取时间节点数据失败');
-    }
-};
-
-// 加载植物数据
-const loadPlants = async () => {
-    loading.value = true;
-    try {
-        let response;
-        if (selectedTimeNode.value) {
-            response = await getPlantsByTimeNode(selectedTimeNode.value);
-        } else {
-            response = await getPlants();
-        }
-        plants.value = response.data;
-    } catch (error) {
-        console.error('获取植物数据失败:', error);
-        ElMessage.error('获取植物数据失败');
-    } finally {
-        loading.value = false;
-    }
-};
-
-// 查看植物详情
-const viewDetail = (plantId) => {
-    router.push(`/plant/${plantId}`);
-};
-
-onMounted(async () => {
-    await loadTimeNodes();
-    // 检查URL中是否有timeNodeId参数
-    if (route.query.timeNodeId) {
-        selectedTimeNode.value = parseInt(route.query.timeNodeId);
-    }
-    await loadPlants();
+onMounted(() => {
+  // 默认加载所有植物，等待时间轴组件触发era变化
+  loadAllPlants();
 });
 </script>
 
 <style scoped>
 .plants-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-.filters {
-    margin: 20px 0;
+.subtitle {
+  color: #606266;
+  margin-bottom: 20px;
 }
 
-.plant-item {
-    margin-bottom: 20px;
+.loading-card {
+  margin-bottom: 20px;
+}
+
+.plants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+  margin-top: 30px;
 }
 
 .plant-card {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: var(--border-radius-large) !important;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.98));
 }
 
-.card-header {
-    text-align: center;
+.plant-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 30px rgba(87, 188, 144, 0.2) !important;
 }
 
-.card-header h2 {
-    margin: 0;
-    font-size: 1.2rem;
+.plant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5px;
+}
+
+.plant-header h3 {
+  margin: 0;
+  color: var(--primary-color);
+  font-size: 1.3em;
+  display: flex;
+  align-items: center;
+}
+
+.plant-emoji {
+  margin-left: 8px;
+  font-size: 1.2em;
+  transition: transform 0.3s ease;
+}
+
+.plant-card:hover .plant-emoji {
+  transform: rotate(15deg) scale(1.3);
 }
 
 .scientific-name {
-    margin: 5px 0 0;
-    font-style: italic;
-    color: #888;
-}
-
-.card-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+  font-style: italic;
+  color: var(--text-light);
+  margin-bottom: 12px;
+  font-size: 0.9em;
 }
 
 .description {
-    margin-bottom: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+  line-height: 1.6;
+  flex-grow: 1;
 }
 
-.plant-stats {
-    display: flex;
-    justify-content: space-around;
-    margin: 15px 0;
-    flex-wrap: wrap;
+.plant-info {
+  margin-bottom: 15px;
+  background-color: rgba(165, 214, 167, 0.15);
+  padding: 10px;
+  border-radius: var(--border-radius-small);
 }
 
-.stat {
-    text-align: center;
-    min-width: 80px;
-    margin-bottom: 10px;
+.info-emoji {
+  display: inline-block;
+  margin-right: 5px;
+  transition: transform 0.3s ease;
 }
 
-.stat-label {
-    font-weight: bold;
-    font-size: 0.9rem;
-    color: #555;
+.plant-card:hover .info-emoji {
+  transform: scale(1.2);
 }
 
-.stat-value {
-    margin-top: 5px;
-    font-size: 0.9rem;
+.view-details-btn {
+  align-self: center;
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s ease;
 }
 
-.card-actions {
-    margin-top: auto;
-    text-align: center;
+.plant-card:hover .view-details-btn {
+  background-color: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+}
+
+.btn-emoji {
+  transition: transform 0.3s ease;
+}
+
+.plant-card:hover .btn-emoji {
+  transform: translateX(3px);
+}
+
+.empty-state {
+  margin-top: 40px;
+  text-align: center;
 }
 </style>

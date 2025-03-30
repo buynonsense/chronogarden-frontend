@@ -25,14 +25,18 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '../store/user'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 
+const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const loginFormRef = ref(null)
 const loading = ref(false)
+const redirectPath = ref('')
 
 const loginForm = reactive({
     username: '',
@@ -44,6 +48,11 @@ const rules = {
     password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
+// 获取重定向路径
+onMounted(() => {
+    redirectPath.value = route.query.redirect || '/dashboard'
+})
+
 const handleLogin = async () => {
     if (!loginFormRef.value) return
 
@@ -53,6 +62,9 @@ const handleLogin = async () => {
                 loading.value = true
                 await userStore.login(loginForm)
                 ElMessage.success('登录成功')
+
+                // 登录成功后重定向到之前的页面
+                router.replace(redirectPath.value)
             } catch (error) {
                 console.error(error)
                 ElMessage.error('登录失败：' + (error.response?.data || '未知错误'))

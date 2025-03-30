@@ -87,10 +87,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { getUserCareRecords, deleteCareRecord } from '../api/careRecords';
-import { getPlants } from '../api/plants';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+
+import { getUserCareRecords, deleteCareRecord } from '../api/careRecords';
+import { getPlants } from '../api/plants';
 
 const router = useRouter();
 const careRecords = ref([]);
