@@ -4,12 +4,13 @@
             <template #header>
                 <h2>登录</h2>
             </template>
-            <el-form :model="loginForm" :rules="rules" ref="loginFormRef">
+            <el-form :model="loginForm" :rules="rules" ref="loginFormRef" @submit.prevent="handleLogin">
                 <el-form-item prop="username">
                     <el-input v-model="loginForm.username" placeholder="用户名" prefix-icon="User" />
                 </el-form-item>
                 <el-form-item prop="password">
-                    <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock" />
+                    <el-input v-model="loginForm.password" type="password" placeholder="密码" prefix-icon="Lock"
+                        @keyup.enter="handleLogin" />
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" @click="handleLogin" :loading="loading"

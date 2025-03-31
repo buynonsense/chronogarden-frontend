@@ -18,25 +18,7 @@
     </div>
 
     <div v-else class="plants-grid">
-      <el-card v-for="plant in plants" :key="plant.id" class="plant-card" @click="viewPlantDetails(plant.id)">
-        <template #header>
-          <div class="plant-header">
-            <h3>{{ plant.name }} <span class="plant-emoji">🌱</span></h3>
-          </div>
-        </template>
-        <p class="scientific-name">{{ plant.scientificName }}</p>
-        <p class="description">{{ truncateText(plant.description, 100) }}</p>
-        <div class="plant-info">
-          <p v-if="plant.firstAppearance"><span class="info-emoji">🕰️</span> <strong>首次出现:</strong> {{
-            plant.firstAppearance }}
-          </p>
-          <p v-if="plant.extinctionTime"><span class="info-emoji">⌛</span> <strong>灭绝时间:</strong> {{
-            plant.extinctionTime }}</p>
-        </div>
-        <el-button type="primary" size="small" @click.stop="viewPlantDetails(plant.id)" class="view-details-btn">
-          查看详情 <span class="btn-emoji">👀</span>
-        </el-button>
-      </el-card>
+      <PlantCard v-for="plant in plants" :key="plant.id" :plant="plant" :interactive="true" />
     </div>
   </div>
 </template>
@@ -47,6 +29,7 @@ import { getPlantsByEra, getPlants } from '../api/plants';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import EraTimeline from '../components/timenode/EraTimeline.vue';
+import PlantCard from '../components/plant/PlantCard.vue';
 
 const router = useRouter();
 const route = useRoute();
