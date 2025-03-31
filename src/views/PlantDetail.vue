@@ -63,6 +63,79 @@
                 </div>
             </div>
 
+            <!-- 植物生长状态区域 -->
+            <div class="growth-status-area" v-if="plant && plantStatus">
+                <el-card class="growth-status-card">
+                    <template #header>
+                        <div class="card-header">
+                            <h3>
+                                <span class="growth-icon" :class="getGrowthIconClass">{{ getGrowthEmoji }}</span>
+                                生长状态
+                            </h3>
+                            <div class="status-tag-container">
+                                <el-tag :type="getHealthStateTagType">{{ getHealthStateText }}</el-tag>
+                                <el-tag v-if="plantStatus.isCompleted" type="success">已完成</el-tag>
+                                <el-tag v-if="plantStatus.isWithered" type="danger">已枯萎</el-tag>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- 生长进度区域 -->
+                    <div class="growth-progress-section">
+                        <h4>生长周期: {{ plantStatus.growthStage ? getGrowthStageText : '未开始' }}</h4>
+                        <el-progress :percentage="getGrowthPercentage"
+                            :format="() => `${plantStatus.growthDays}/${plantStatus.totalDays}天`"
+                            :status="getGrowthProgressStatus" :stroke-width="20" class="growth-progress">
+                        </el-progress>
+                    </div>
+
+                    <!-- 植物健康状态区域 -->
+                    <div class="plant-health-section">
+                        <div class="stat-item">
+                            <span class="stat-icon">💧</span>
+                            <el-progress :percentage="plantStatus.waterLevel || 0"
+                                :status="getStatProgressStatus(plantStatus.waterLevel)"
+                                :color="getStatProgressColor(plantStatus.waterLevel)">
+                            </el-progress>
+                        </div>
+
+                        <div class="stat-item">
+                            <span class="stat-icon">☀️</span>
+                            <el-progress :percentage="plantStatus.lightLevel || 0"
+                                :status="getStatProgressStatus(plantStatus.lightLevel)"
+                                :color="getStatProgressColor(plantStatus.lightLevel)">
+                            </el-progress>
+                        </div>
+
+                        <div class="stat-item">
+                            <span class="stat-icon">🌱</span>
+                            <el-progress :percentage="plantStatus.nutrientLevel || 0"
+                                :status="getStatProgressStatus(plantStatus.nutrientLevel)"
+                                :color="getStatProgressColor(plantStatus.nutrientLevel)">
+                            </el-progress>
+                        </div>
+                    </div>
+
+                    <!-- 生长控制按钮区域 -->
+                    <div class="growth-control-section">
+                        <el-button type="primary" @click="startGrowth" v-if="!isActiveGrowth" :disabled="loading">
+                            {{ plantStatus.isWithered ? '重新养护' : '开始养护' }}
+                        </el-button>
+
+                        <!-- 开发模式: 手动衰减按钮 -->
+                        <div v-if="isDevelopmentMode" class="development-controls">
+                            <el-divider>开发工具</el-divider>
+                            <div class="decay-buttons">
+                                <el-button type="warning" size="small" @click="applyDecay('normal')">正常衰减</el-button>
+                                <el-button type="danger" size="small" @click="applyDecay('drought')">干旱事件</el-button>
+                                <el-button type="danger" size="small" @click="applyDecay('pest')">虫害事件</el-button>
+                                <el-button type="danger" size="small" @click="applyDecay('coldwave')">寒潮事件</el-button>
+                            </div>
+                        </div>
+                    </div>
+                </el-card>
+            </div>
+
             <!-- 植物详细信息标签页 -->
             <el-tabs class="plant-tabs">
                 <el-tab-pane label="基本信息">
@@ -141,11 +214,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { getPlantById } from '../api/plants';
 import { getUserPlantCareRecords, addCareRecord as apiAddCareRecord, deleteCareRecord } from '../api/careRecords';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import axios from 'axios';
 
 const route = useRoute();
 const router = useRouter();
@@ -159,6 +233,9 @@ const showFertilizeEffect = ref(false);
 const showPruneEffect = ref(false);
 const showSoilEffect = ref(false);
 const actionFeedback = ref(null);
+const plantStatus = ref(null);
+const statusPollingInterval = ref(null);
+const isDevelopmentMode = ref(process.env.NODE_ENV === 'development');
 
 // 格式化养护指南，将换行符转换为HTML
 const formattedCareGuide = computed(() => {
@@ -168,11 +245,26 @@ const formattedCareGuide = computed(() => {
 
 // 根据植物类型获取动画图片
 const getPlantAnimationSrc = () => {
-    if (!plant.value) return '/images/plants/default-plant.gif';
+    if (!plant.value || !plantStatus.value) {
+        return '/images/plants/default-plant.gif';
+    }
 
-    // 根据植物类型返回不同的动画
     const type = plant.value.type || 'default';
-    return `/images/plants/${type.toLowerCase()}.gif`;
+    const stage = plantStatus.value.growthStage || 'seed';
+    const status = plantStatus.value.healthStatus || 50;
+
+    let statePrefix = '';
+    if (status === 0) {
+        statePrefix = 'withered_';
+    } else if (status <= 30) {
+        statePrefix = 'endangered_';
+    } else if (status <= 79) {
+        statePrefix = '';
+    } else {
+        statePrefix = 'healthy_';
+    }
+
+    return `/images/plants/${statePrefix}${type}_${stage}.gif`;
 };
 
 // 执行养护操作
@@ -199,6 +291,9 @@ const performCareAction = async (actionType) => {
 
         // 触发植物生长动画
         triggerGrowthAnimation();
+
+        // 添加状态刷新
+        await loadPlantGrowthStatus();
 
     } catch (error) {
         console.error('养护操作失败:', error);
@@ -318,9 +413,207 @@ const formatDate = (dateString) => {
     });
 };
 
-onMounted(async () => {
-    await loadPlantDetails();
-    await loadCareRecords();
+// 加载植物生长状态
+const loadPlantGrowthStatus = async () => {
+    try {
+        const response = await axios.get(`/api/plants/${plantId}/growth-status`);
+        plantStatus.value = response.data;
+
+        // 更新植物动画状态
+        updatePlantAnimation();
+    } catch (error) {
+        console.error('加载植物生长状态失败:', error);
+    }
+};
+
+// 开始植物养护
+const startGrowth = async () => {
+    try {
+        await axios.post(`/api/plants/${plantId}/start-growth`);
+        ElMessage.success('开始养护植物！');
+        await loadPlantGrowthStatus();
+
+        // 添加一条养护记录
+        await apiAddCareRecord({
+            plant: { id: plantId },
+            actionType: plantStatus.value.isWithered ? '重新养护' : '开始养护',
+            notes: '开始植物生长周期'
+        });
+
+        // 重新加载养护记录
+        await loadCareRecords();
+    } catch (error) {
+        console.error('开始养护失败:', error);
+        ElMessage.error('开始养护失败，请稍后再试');
+    }
+};
+
+// 执行手动衰减（仅开发模式）
+const applyDecay = async (decayType) => {
+    if (!isDevelopmentMode.value) return;
+
+    try {
+        await axios.post(`/api/plants/${plantId}/apply-decay?decayType=${decayType}`);
+        ElMessage.success(`已应用${getDecayTypeText(decayType)}！`);
+        await loadPlantGrowthStatus();
+    } catch (error) {
+        console.error('执行衰减失败:', error);
+        ElMessage.error('执行衰减失败，请稍后再试');
+    }
+};
+
+// 获取衰减类型文本
+const getDecayTypeText = (decayType) => {
+    switch (decayType) {
+        case 'normal': return '正常衰减';
+        case 'drought': return '干旱事件';
+        case 'pest': return '虫害事件';
+        case 'coldwave': return '寒潮事件';
+        default: return '未知衰减类型';
+    }
+};
+
+// 更新植物动画状态
+const updatePlantAnimation = () => {
+    if (!plantStatus.value) return;
+
+    // 根据健康状态更新植物显示
+    const status = plantStatus.value.healthStatus;
+
+    if (status === 0) {
+        // 枯萎状态
+        isGrowing.value = false;
+        // 可以添加枯萎特效
+    } else if (status <= 30) {
+        // 濒危状态
+        isGrowing.value = false;
+        // 可以添加濒危特效
+    } else {
+        // 正常或健康状态
+        isGrowing.value = true;
+    }
+};
+
+// 计算属性：健康状态文本
+const getHealthStateText = computed(() => {
+    if (!plantStatus.value) return '';
+
+    const status = plantStatus.value.healthStatus;
+    if (status === 0) return '枯萎';
+    if (status <= 30) return '濒危';
+    if (status <= 79) return '正常';
+    return '健康';
+});
+
+// 计算属性：健康状态标签类型
+const getHealthStateTagType = computed(() => {
+    if (!plantStatus.value) return '';
+
+    const status = plantStatus.value.healthStatus;
+    if (status === 0) return 'danger';
+    if (status <= 30) return 'warning';
+    if (status <= 79) return 'info';
+    return 'success';
+});
+
+// 计算属性：生长阶段文本
+const getGrowthStageText = computed(() => {
+    if (!plantStatus.value) return '';
+
+    const stage = plantStatus.value.growthStage;
+    if (stage === 'seed') return '种子期 (0-2天)';
+    if (stage === 'sprout') return '发芽期 (2-5天)';
+    if (stage === 'flower') return '开花期 (5-10天)';
+    if (stage === 'fruit') return '结果期 (10-14天)';
+    return '未知阶段';
+});
+
+// 计算属性：生长阶段图标
+const getGrowthEmoji = computed(() => {
+    if (!plantStatus.value) return '🌱';
+
+    const stage = plantStatus.value.growthStage;
+    if (stage === 'seed') return '🌰';
+    if (stage === 'sprout') return '🌱';
+    if (stage === 'flower') return '🌸';
+    if (stage === 'fruit') return '🍎';
+    return '🌱';
+});
+
+// 计算属性：生长图标类
+const getGrowthIconClass = computed(() => {
+    if (!plantStatus.value) return '';
+
+    if (plantStatus.value.isWithered) return 'withered';
+
+    return plantStatus.value.growthStage;
+});
+
+// 计算属性：生长进度百分比
+const getGrowthPercentage = computed(() => {
+    if (!plantStatus.value) return 0;
+
+    const days = plantStatus.value.growthDays;
+    const total = plantStatus.value.totalDays;
+
+    return Math.min(100, Math.round((days / total) * 100));
+});
+
+// 计算属性：生长进度状态
+const getGrowthProgressStatus = computed(() => {
+    if (!plantStatus.value) return '';
+
+    if (plantStatus.value.isWithered) return 'exception';
+    if (plantStatus.value.isCompleted) return 'success';
+    if (plantStatus.value.healthStatus <= 30) return 'warning';
+
+    return '';
+});
+
+// 计算属性：是否处于活跃生长状态
+const isActiveGrowth = computed(() => {
+    if (!plantStatus.value) return false;
+
+    return !plantStatus.value.isWithered &&
+        plantStatus.value.growthDays > 0 &&
+        !plantStatus.value.isCompleted;
+});
+
+// 获取植物特定属性进度条的状态
+const getStatProgressStatus = (value) => {
+    if (value === undefined || value === null) return '';
+    if (value === 0) return 'exception';
+    if (value <= 30) return 'warning';
+    return 'normal';
+};
+
+// 获取植物特定属性进度条的颜色
+const getStatProgressColor = (value) => {
+    if (value === undefined || value === null) return '';
+    if (value === 0) return '#F56C6C';
+    if (value <= 30) return '#E6A23C';
+    if (value <= 79) return '#409EFF';
+    return '#67C23A';
+};
+
+// 设置状态轮询
+const setupStatusPolling = () => {
+    // 每1分钟刷新一次植物状态
+    statusPollingInterval.value = setInterval(loadPlantGrowthStatus, 60000);
+};
+
+onMounted(() => {
+    loadPlantDetails();
+    loadCareRecords();
+    loadPlantGrowthStatus();
+    setupStatusPolling();
+});
+
+onUnmounted(() => {
+    // 清除轮询定时器
+    if (statusPollingInterval.value) {
+        clearInterval(statusPollingInterval.value);
+    }
 });
 </script>
 
@@ -641,6 +934,148 @@ onMounted(async () => {
 
     .action-name {
         font-size: 0.8em;
+    }
+}
+
+/* 新增样式 */
+.growth-status-area {
+    margin: 20px 0;
+}
+
+.growth-status-card {
+    border-radius: var(--border-radius-medium);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.growth-icon {
+    font-size: 1.5em;
+    transition: all 0.3s ease;
+}
+
+.growth-icon.withered {
+    filter: grayscale(1) opacity(0.7);
+}
+
+.growth-icon.seed {
+    animation: pulseGently 2s infinite alternate;
+}
+
+.growth-icon.sprout {
+    animation: growSprout 3s infinite alternate;
+}
+
+.growth-icon.flower {
+    animation: bloomFlower 4s infinite alternate;
+}
+
+.growth-icon.fruit {
+    animation: ripeFruit 3s infinite alternate;
+}
+
+.status-tag-container {
+    display: flex;
+    gap: 8px;
+}
+
+.growth-progress-section {
+    margin: 15px 0;
+}
+
+.growth-progress-section h4 {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.growth-progress {
+    margin-bottom: 20px;
+}
+
+.plant-health-section {
+    margin: 20px 0;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 10px;
+}
+
+.stat-icon {
+    font-size: 1.2em;
+}
+
+.growth-control-section {
+    margin-top: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.development-controls {
+    margin-top: 10px;
+}
+
+.decay-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+@keyframes pulseGently {
+    0% {
+        transform: scale(1);
+    }
+
+    100% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes growSprout {
+    0% {
+        transform: translateY(0);
+    }
+
+    100% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes bloomFlower {
+    0% {
+        transform: rotate(-5deg);
+    }
+
+    100% {
+        transform: rotate(5deg);
+    }
+}
+
+@keyframes ripeFruit {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
+
+    100% {
+        transform: scale(1);
     }
 }
 </style>

@@ -1,32 +1,45 @@
 <template>
     <el-card class="plant-card" :body-style="{ padding: '0' }">
         <div class="plant-visual-container">
-            <!-- 植物动态展示区 -->
-            <div class="plant-visual" :class="{ 'needs-water': needsWater, 'needs-light': needsLight }">
+            <!-- 植物状态展示区 -->
+            <div class="plant-visual" :class="plantStateClass">
                 <img :src="getPlantImage()" class="plant-image" alt="植物图片" />
-                <!-- 植物状态指示器 -->
+
+                <!-- 状态指示器 -->
                 <div class="plant-status-indicators" v-if="interactive">
-                    <div class="water-indicator" v-if="needsWater">💧</div>
-                    <div class="light-indicator" v-if="needsLight">☀️</div>
-                    <div class="fertilizer-indicator" v-if="needsFertilizer">🌱</div>
+                    <div class="status-indicator water-indicator" v-if="waterLevel < 30">💧</div>
+                    <div class="status-indicator light-indicator" v-if="lightLevel < 30">☀️</div>
+                    <div class="status-indicator nutrient-indicator" v-if="nutrientLevel < 30">🌱</div>
+                    <div class="status-indicator withered-indicator" v-if="isWithered">💀</div>
+                </div>
+
+                <!-- 生长阶段指示器 -->
+                <div class="growth-stage-indicator" v-if="growthStage">
+                    {{ getGrowthStageEmoji() }}
                 </div>
             </div>
 
-            <!-- 养护操作按钮组 -->
+            <!-- 养护操作按钮 -->
             <div class="care-actions" v-if="interactive">
-                <button class="care-button water-button" @click="performCare('浇水')" :disabled="!needsWater">
+                <button class="care-button water-button" @click="performCare('浇水')"
+                    :disabled="isWithered || waterLevel > 90">
                     <span class="button-icon">💧</span>
                     <span class="button-text">浇水</span>
                 </button>
-                <button class="care-button light-button" @click="performCare('调整光照')" :disabled="!needsLight">
+
+                <button class="care-button light-button" @click="performCare('调整光照')"
+                    :disabled="isWithered || lightLevel > 90">
                     <span class="button-icon">☀️</span>
                     <span class="button-text">调光</span>
                 </button>
-                <button class="care-button fertilize-button" @click="performCare('施肥')" :disabled="!needsFertilizer">
+
+                <button class="care-button fertilize-button" @click="performCare('施肥')"
+                    :disabled="isWithered || nutrientLevel > 90">
                     <span class="button-icon">🌱</span>
                     <span class="button-text">施肥</span>
                 </button>
-                <button class="care-button prune-button" @click="performCare('修剪')">
+
+                <button class="care-button prune-button" @click="performCare('修剪')" :disabled="isWithered">
                     <span class="button-icon">✂️</span>
                     <span class="button-text">修剪</span>
                 </button>
@@ -37,32 +50,85 @@
         <div class="plant-info">
             <div class="plant-header">
                 <h3>{{ plant.name }}</h3>
-                <el-tag size="small" v-if="plant.era">{{ plant.era }}</el-tag>
+                <div class="tags-container">
+                    <el-tag size="small" v-if="plant.era">{{ plant.era }}</el-tag>
+                    <el-tag size="small" type="success" effect="plain" v-if="plant.isCompleted">Clear</el-tag>
+                </div>
             </div>
+
             <p class="scientific-name">{{ plant.scientificName }}</p>
-            <div class="plant-status">
-                <el-progress :percentage="waterLevel" color="#409EFF" :format="() => '水分'"
-                    class="plant-progress"></el-progress>
-                <el-progress :percentage="lightLevel" color="#E6A23C" :format="() => '光照'"
-                    class="plant-progress"></el-progress>
-                <el-progress :percentage="nutrientLevel" color="#67C23A" :format="() => '养分'"
-                    class="plant-progress"></el-progress>
+
+            <!-- 生长周期进度条 -->
+            <div class="growth-progress" v-if="growthDays > 0">
+                <div class="progress-label">
+                    <span>生长周期: {{ getGrowthStageText() }}</span>
+                    <span>{{ growthDays }}/14天</span>
+                </div>
+                <el-progress :percentage="Math.min(100, (growthDays / 14) * 100)" :status="growthProgressStatus">
+                </el-progress>
             </div>
-            <el-button type="primary" class="details-button" @click="viewDetails">查看详情</el-button>
+
+            <!-- 植物状态指标 -->
+            <div class="plant-status" v-if="!isWithered">
+                <div class="status-label">
+                    <span>状态: </span>
+                    <el-tag size="small" :type="healthStateType">{{ healthStateText }}</el-tag>
+                </div>
+                <div class="progress-row">
+                    <el-progress :percentage="Number(waterLevel) || 0" color="#409EFF"
+                        :status="getStatProgressStatus(Number(waterLevel) || 0)" class="plant-progress">
+                        <template #default>
+                            <span class="progress-text">水分</span>
+                        </template>
+                    </el-progress>
+                </div>
+
+                <div class="progress-row">
+                    <el-progress :percentage="Number(lightLevel) || 0" color="#E6A23C"
+                        :status="getStatProgressStatus(Number(lightLevel) || 0)" class="plant-progress">
+                        <template #default>
+                            <span class="progress-text">光照</span>
+                        </template>
+                    </el-progress>
+                </div>
+
+                <div class="progress-row">
+                    <el-progress :percentage="Number(nutrientLevel) || 0" color="#67C23A"
+                        :status="getStatProgressStatus(Number(nutrientLevel) || 0)" class="plant-progress">
+                        <template #default>
+                            <span class="progress-text">养分</span>
+                        </template>
+                    </el-progress>
+                </div>
+            </div>
+
+            <!-- 按钮区域 -->
+            <div class="plant-actions">
+                <el-button v-if="isWithered" type="danger" class="revive-button" @click="startGrowth">
+                    重新养护
+                </el-button>
+                <el-button v-else-if="!growthStarted" type="primary" class="start-button" @click="startGrowth">
+                    开始养护
+                </el-button>
+                <el-button v-else type="primary" class="details-button" @click="viewDetails">
+                    查看详情
+                </el-button>
+            </div>
         </div>
 
-        <!-- 动画效果层 -->
-        <div class="animation-layer" v-if="showAnimation">
+        <!-- 特效动画层 -->
+        <div class="animation-container" v-if="showAnimation">
             <div :class="animationClass"></div>
         </div>
     </el-card>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { addCareRecord } from '../../api/careRecords';
 import { ElMessage } from 'element-plus';
+import axios from 'axios';
 
 const props = defineProps({
     plant: {
@@ -76,84 +142,237 @@ const props = defineProps({
 });
 
 const router = useRouter();
-const waterLevel = ref(Math.floor(Math.random() * 100));
-const lightLevel = ref(Math.floor(Math.random() * 100));
-const nutrientLevel = ref(Math.floor(Math.random() * 100));
+
+// 植物状态变量
+const waterLevel = ref(props.plant.waterLevel || 70);
+const lightLevel = ref(props.plant.lightLevel || 70);
+const nutrientLevel = ref(props.plant.nutrientLevel || 70);
+const growthStage = ref(props.plant.growthStage || 'seed');
+const growthDays = ref(0);
+const isWithered = ref(props.plant.isWithered || false);
+const growthStarted = ref(!!props.plant.growthStartTime);
 const showAnimation = ref(false);
 const animationClass = ref('');
 
-// 计算属性: 植物是否需要特定养护
-const needsWater = computed(() => waterLevel.value < 30);
-const needsLight = computed(() => lightLevel.value < 30);
-const needsFertilizer = computed(() => nutrientLevel.value < 30);
+// 修改加载植物生长状态的函数
+const loadPlantGrowthStatus = async () => {
+    if (!props.plant.id) return;
 
-// 获取植物图片 (根据植物类型和状态)
-const getPlantImage = () => {
-    // 这里应该根据植物类型、成长阶段和健康状态返回不同的图片
-    // 示例逻辑，实际应基于真实图片集
-    const healthStatus = Math.min(waterLevel.value, lightLevel.value, nutrientLevel.value);
-    let imageUrl = '/src/assets/images/plants/default-plant.png';
+    try {
+        const response = await axios.get(`/api/plants/${props.plant.id}/growth-status`);
+        const data = response.data;
 
-    if (healthStatus < 30) {
-        imageUrl = `/src/assets/images/plants/${props.plant.type || 'default'}_unhealthy.png`;
-    } else if (healthStatus < 70) {
-        imageUrl = `/src/assets/images/plants/${props.plant.type || 'default'}_normal.png`;
+        // 确保值是有效的数字，并且在0-100范围内
+        waterLevel.value = Math.min(100, Math.max(0, Number(data.waterLevel || 70)));
+        lightLevel.value = Math.min(100, Math.max(0, Number(data.lightLevel || 70)));
+        nutrientLevel.value = Math.min(100, Math.max(0, Number(data.nutrientLevel || 70)));
+
+        growthStage.value = data.growthStage || 'seed';
+        growthDays.value = Number(data.growthDays || 0);
+        isWithered.value = Boolean(data.isWithered);
+        growthStarted.value = Number(data.growthDays || 0) > 0;
+
+        console.log('加载的植物状态:', {
+            waterLevel: waterLevel.value,
+            lightLevel: lightLevel.value,
+            nutrientLevel: nutrientLevel.value
+        });
+    } catch (error) {
+        console.error('获取植物生长状态失败:', error);
+    }
+};
+
+// 计算植物整体健康状态
+const healthStatus = computed(() => {
+    if (isWithered.value) return 0;
+
+    // 计算平均值
+    const avg = Math.floor((waterLevel.value + lightLevel.value + nutrientLevel.value) / 3);
+    return avg;
+});
+
+// 健康状态文本
+const healthStateText = computed(() => {
+    const status = healthStatus.value;
+    if (status === 0) return '枯萎';
+    if (status <= 30) return '濒危';
+    if (status <= 79) return '正常';
+    return '健康';
+});
+
+// 健康状态标签类型
+const healthStateType = computed(() => {
+    const status = healthStatus.value;
+    if (status === 0) return 'danger';
+    if (status <= 30) return 'warning';
+    if (status <= 79) return '';
+    return 'success';
+});
+
+// 植物视觉状态类
+const plantStateClass = computed(() => {
+    const classes = [];
+
+    if (isWithered.value) {
+        classes.push('withered');
     } else {
-        imageUrl = `/src/assets/images/plants/${props.plant.type || 'default'}_thriving.png`;
+        if (waterLevel.value <= 30) classes.push('needs-water');
+        if (lightLevel.value <= 30) classes.push('needs-light');
+        if (nutrientLevel.value <= 30) classes.push('needs-nutrient');
+
+        // 添加生长阶段类
+        if (growthStage.value) {
+            classes.push(`stage-${growthStage.value}`);
+        }
+
+        // 添加健康状态类
+        if (healthStatus.value <= 30) {
+            classes.push('endangered');
+        } else if (healthStatus.value >= 80) {
+            classes.push('healthy');
+        }
     }
 
-    // 如果图片不存在，返回默认图片
-    return imageUrl;
+    return classes;
+});
+
+// 生长进度状态
+const growthProgressStatus = computed(() => {
+    if (isWithered.value) return 'exception';
+    if (props.plant.isCompleted) return 'success';
+    if (healthStatus.value <= 30) return 'warning';
+    return '';
+});
+
+// 获取植物生长阶段文本
+const getGrowthStageText = () => {
+    switch (growthStage.value) {
+        case 'seed': return '种子期';
+        case 'sprout': return '发芽期';
+        case 'flower': return '开花期';
+        case 'fruit': return '结果期';
+        default: return '未知阶段';
+    }
+};
+
+// 获取生长阶段对应的emoji
+const getGrowthStageEmoji = () => {
+    switch (growthStage.value) {
+        case 'seed': return '🌰';
+        case 'sprout': return '🌱';
+        case 'flower': return '🌸';
+        case 'fruit': return '🍎';
+        default: return '🌱';
+    }
+};
+
+// 获取属性进度条状态
+const getStatProgressStatus = (value) => {
+    if (value === 0) return 'exception';
+    if (value <= 30) return 'warning';
+    return 'normal';
+};
+
+// 获取植物图片
+const getPlantImage = () => {
+    // 基于植物状态和生长阶段返回不同图片
+    const type = props.plant.type || 'default';
+    let statePrefix = '';
+
+    if (isWithered.value) {
+        statePrefix = 'withered_';
+    } else if (healthStatus.value <= 30) {
+        statePrefix = 'endangered_';
+    } else if (healthStatus.value >= 80) {
+        statePrefix = 'healthy_';
+    }
+
+    const stageSuffix = growthStage.value || 'seed';
+
+    // 构建图片路径
+    return `/images/plants/${statePrefix}${type}_${stageSuffix}.png`;
 };
 
 // 执行养护操作
 const performCare = async (actionType) => {
-    // 显示相应动画
+    if (isWithered.value) return;
+
+    // 显示动画效果
     showAnimation.value = true;
 
+    // 根据操作类型设置不同动画并更新植物状态
     switch (actionType) {
         case '浇水':
             animationClass.value = 'water-animation';
             waterLevel.value = Math.min(100, waterLevel.value + 60);
             break;
+
         case '调整光照':
             animationClass.value = 'light-animation';
             lightLevel.value = Math.min(100, lightLevel.value + 60);
             break;
+
         case '施肥':
             animationClass.value = 'fertilize-animation';
             nutrientLevel.value = Math.min(100, nutrientLevel.value + 60);
             break;
+
         case '修剪':
             animationClass.value = 'prune-animation';
             // 修剪可能影响所有生长参数
-            waterLevel.value = Math.min(100, waterLevel.value + 20);
-            lightLevel.value = Math.min(100, lightLevel.value + 20);
+            waterLevel.value = Math.min(100, waterLevel.value + 15);
+            lightLevel.value = Math.min(100, lightLevel.value + 25);
             nutrientLevel.value = Math.min(100, nutrientLevel.value + 20);
             break;
     }
 
-    // 自动记录养护操作，无需备注
     try {
+        // 记录养护操作并通知后端
         await addCareRecord({
             plant: { id: props.plant.id },
             actionType: actionType,
-            notes: '' // 自动记录无需备注
+            notes: '' // 自动操作不需要备注
         });
+
+        // 重新获取植物状态
+        await loadPlantGrowthStatus();
 
         ElMessage.success({
             message: `${actionType}成功!`,
             duration: 1500
         });
 
+    } catch (error) {
+        console.error('养护操作失败:', error);
+        ElMessage.error('养护操作失败');
+    } finally {
         // 3秒后隐藏动画
         setTimeout(() => {
             showAnimation.value = false;
         }, 3000);
+    }
+};
+
+// 开始植物养护
+const startGrowth = async () => {
+    try {
+        await axios.post(`/api/plants/${props.plant.id}/start-growth`);
+
+        // 记录养护记录
+        await addCareRecord({
+            plant: { id: props.plant.id },
+            actionType: isWithered.value ? '重新养护' : '开始养护',
+            notes: '开始植物生长周期'
+        });
+
+        // 重新加载植物状态
+        await loadPlantGrowthStatus();
+
+        ElMessage.success(isWithered.value ? '植物重新养护成功!' : '开始养护植物!');
 
     } catch (error) {
-        console.error('记录养护操作失败:', error);
-        ElMessage.error('记录养护操作失败');
+        console.error('开始养护失败:', error);
+        ElMessage.error('开始养护失败，请稍后再试');
     }
 };
 
@@ -162,21 +381,14 @@ const viewDetails = () => {
     router.push(`/plant/${props.plant.id}`);
 };
 
-// 随机模拟植物需求变化
 onMounted(() => {
-    // 真实实现中这应该基于上次养护时间和植物需求特性
-    if (props.interactive) {
-        const decreaseStats = () => {
-            // 每小时减少1-3点
-            waterLevel.value = Math.max(0, waterLevel.value - Math.floor(Math.random() * 3) - 1);
-            lightLevel.value = Math.max(0, lightLevel.value - Math.floor(Math.random() * 3) - 1);
-            nutrientLevel.value = Math.max(0, nutrientLevel.value - Math.floor(Math.random() * 3) - 1);
-            setTimeout(decreaseStats, 3600000); // 每小时更新
-        };
+    // 添加数据监听
+    loadPlantGrowthStatus();
+});
 
-        // 初始化时随机减少一些
-        setTimeout(decreaseStats, 5000);
-    }
+// 监听植物ID变化，重新加载状态
+watch(() => props.plant.id, () => {
+    loadPlantGrowthStatus();
 });
 </script>
 
@@ -220,15 +432,53 @@ onMounted(() => {
     transition: all 0.5s ease;
 }
 
-.plant-visual.needs-water .plant-image {
-    filter: opacity(0.7) grayscale(0.3);
+/* 植物健康状态样式 */
+.plant-visual.withered .plant-image {
+    filter: grayscale(1) brightness(0.7) opacity(0.8);
+    transform: rotate(5deg) scale(0.9);
+}
+
+.plant-visual.endangered .plant-image {
+    filter: brightness(0.85) saturate(0.9);
     transform: scale(0.95);
 }
 
-.plant-visual.needs-light .plant-image {
-    filter: brightness(0.85) grayscale(0.2);
+.plant-visual.healthy .plant-image {
+    filter: brightness(1.05) saturate(1.1);
+    transform: scale(1.02);
 }
 
+/* 植物需求状态样式 */
+.plant-visual.needs-water .plant-image {
+    filter: opacity(0.85) grayscale(0.2);
+}
+
+.plant-visual.needs-light .plant-image {
+    filter: brightness(0.9);
+}
+
+.plant-visual.needs-nutrient .plant-image {
+    filter: saturate(0.9);
+}
+
+/* 生长阶段样式 */
+.plant-visual.stage-seed .plant-image {
+    animation: seedPulse 3s infinite alternate;
+}
+
+.plant-visual.stage-sprout .plant-image {
+    animation: sproutGrow 4s infinite alternate;
+}
+
+.plant-visual.stage-flower .plant-image {
+    animation: flowerBloom 5s infinite alternate;
+}
+
+.plant-visual.stage-fruit .plant-image {
+    animation: fruitRipe 3s infinite alternate;
+}
+
+/* 状态指示器 */
 .plant-status-indicators {
     position: absolute;
     top: 10px;
@@ -238,14 +488,27 @@ onMounted(() => {
     gap: 8px;
 }
 
-.water-indicator,
-.light-indicator,
-.fertilizer-indicator {
+.status-indicator {
     font-size: 1.5rem;
     filter: drop-shadow(0 0 3px #fff);
     animation: bounce 1s infinite alternate;
 }
 
+.withered-indicator {
+    filter: drop-shadow(0 0 3px rgba(255, 0, 0, 0.3));
+}
+
+/* 生长阶段指示器 */
+.growth-stage-indicator {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 1.5rem;
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7));
+    animation: float 3s infinite alternate;
+}
+
+/* 养护操作按钮 */
 .care-actions {
     display: flex;
     justify-content: center;
@@ -302,6 +565,7 @@ onMounted(() => {
     background-color: #f5f5f5;
 }
 
+/* 植物信息区 */
 .plant-info {
     padding: 15px;
 }
@@ -319,6 +583,11 @@ onMounted(() => {
     font-size: 1.2rem;
 }
 
+.tags-container {
+    display: flex;
+    gap: 5px;
+}
+
 .scientific-name {
     font-style: italic;
     color: var(--text-secondary);
@@ -326,25 +595,78 @@ onMounted(() => {
     margin-bottom: 12px;
 }
 
+/* 生长周期进度 */
+.growth-progress {
+    margin-bottom: 15px;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
 .plant-status {
     margin-bottom: 15px;
+}
+
+.status-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
 }
 
 .plant-progress {
     margin-bottom: 8px;
 }
 
-.details-button {
+.progress-row {
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.progress-text {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: var(--el-text-color-regular);
+    z-index: 1;
+    /* 确保文本显示在最上层 */
+}
+
+/* 确保进度条文本区域有足够空间 */
+:deep(.el-progress-bar__inner) {
+    transition: width 0.3s ease;
+}
+
+:deep(.el-progress__text) {
+    min-width: 35px;
+}
+
+.plant-actions {
+    display: flex;
+}
+
+.details-button,
+.start-button,
+.revive-button {
     width: 100%;
 }
 
 /* 动画效果 */
-.animation-layer {
+.animation-container {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    height: 220px;
     pointer-events: none;
     z-index: 10;
 }
@@ -356,7 +678,7 @@ onMounted(() => {
     transform: translateX(-50%);
     width: 100px;
     height: 100px;
-    background: url('/src/assets/images/animations/water-drop.png') no-repeat center;
+    background: url('/images/effects/water-effect.png') no-repeat center;
     background-size: contain;
     animation: waterDrop 2s ease-in;
     opacity: 0;
@@ -379,7 +701,7 @@ onMounted(() => {
     transform: translateX(-50%);
     width: 100px;
     height: 50px;
-    background: url('/src/assets/images/animations/fertilizer.png') no-repeat center;
+    background: url('/images/effects/fertilize-effect.png') no-repeat center;
     background-size: contain;
     animation: fertilizer 2s ease-in;
     opacity: 0;
@@ -392,12 +714,13 @@ onMounted(() => {
     transform: translateX(-50%);
     width: 80px;
     height: 80px;
-    background: url('/src/assets/images/animations/scissors.png') no-repeat center;
+    background: url('/images/effects/prune-effect.png') no-repeat center;
     background-size: contain;
     animation: pruning 1.5s ease-in-out;
     opacity: 0;
 }
 
+/* 动画关键帧 */
 @keyframes bounce {
     0% {
         transform: translateY(0);
@@ -405,6 +728,16 @@ onMounted(() => {
 
     100% {
         transform: translateY(-5px);
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0) rotate(0);
+    }
+
+    100% {
+        transform: translateY(-5px) rotate(5deg);
     }
 }
 
@@ -489,6 +822,116 @@ onMounted(() => {
     100% {
         opacity: 0;
         transform: translateX(-50%) rotate(0);
+    }
+}
+
+/* 植物生长阶段动画 */
+@keyframes seedPulse {
+    0% {
+        transform: scale(1);
+    }
+
+    100% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes sproutGrow {
+    0% {
+        transform: translateY(2px) scale(0.98);
+    }
+
+    100% {
+        transform: translateY(-2px) scale(1.02);
+    }
+}
+
+@keyframes flowerBloom {
+    0% {
+        transform: rotate(-2deg);
+    }
+
+    100% {
+        transform: rotate(2deg);
+    }
+}
+
+@keyframes fruitRipe {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.04);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* 新增动画效果 */
+/* 图片轻微晃动 */
+@keyframes sway {
+    0% {
+        transform: rotate(-2deg);
+    }
+
+    100% {
+        transform: rotate(2deg);
+    }
+}
+
+/* 呼吸效果 */
+@keyframes breathe {
+    0% {
+        transform: scale(1);
+    }
+
+    100% {
+        transform: scale(1.05);
+    }
+}
+
+/* 生长效果 */
+@keyframes grow {
+    0% {
+        transform: translateY(5px) scale(0.95);
+    }
+
+    100% {
+        transform: translateY(-5px) scale(1.05);
+    }
+}
+
+/* 水滴效果 */
+.water-effect {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    background-color: #4fc3f7;
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: dropFall 1.5s linear infinite;
+}
+
+@keyframes dropFall {
+    0% {
+        transform: translateX(-50%) translateY(0) scale(1);
+        opacity: 0.8;
+    }
+
+    80% {
+        transform: translateX(-50%) translateY(80px) scale(1.5);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: translateX(-50%) translateY(100px) scale(2);
+        opacity: 0;
     }
 }
 </style>
