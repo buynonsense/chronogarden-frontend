@@ -400,6 +400,8 @@ watch(() => props.plant.id, () => {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     height: 100%;
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .plant-card:hover {
@@ -414,6 +416,9 @@ watch(() => props.plant.id, () => {
     background: linear-gradient(to bottom, #e8f5e9, #f1f8e9);
     border-top-left-radius: var(--border-radius-large);
     border-top-right-radius: var(--border-radius-large);
+    z-index: 6;
+    /* 增加下边距，保证 care-actions 区域显示空间 */
+    padding-bottom: 50px;
 }
 
 .plant-visual {
@@ -510,11 +515,17 @@ watch(() => props.plant.id, () => {
 
 /* 养护操作按钮 */
 .care-actions {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20 !important;
     display: flex;
     justify-content: center;
     gap: 8px;
     padding: 10px;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(40, 40, 40, 0.95) !important;
+    border-radius: 0 0 var(--border-radius-medium) var(--border-radius-medium);
 }
 
 .care-button {
@@ -568,6 +579,9 @@ watch(() => props.plant.id, () => {
 /* 植物信息区 */
 .plant-info {
     padding: 15px;
+    position: relative;
+    z-index: 10;
+    /* 确保低于养护操作按钮 */
 }
 
 .plant-header {
@@ -633,13 +647,90 @@ watch(() => props.plant.id, () => {
 .progress-text {
     position: absolute;
     right: 5px;
-    /* 将15px改为5px，使文本更靠右 */
     top: 50%;
     transform: translateY(-50%);
     font-size: 14px;
-    color: var(--el-text-color-regular);
+    color: var(--text-primary);
+    /* 使用主题变量 */
     z-index: 1;
-    /* 确保文本显示在最上层 */
+    /* 添加以下内容增强可读性 */
+    background-color: rgba(255, 255, 255, 0.8);
+    /* 浅色模式下的背景 */
+    padding: 0 5px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* 夜间模式特定样式 */
+@media (prefers-color-scheme: dark) {
+    .progress-text {
+        background-color: rgba(0, 0, 0, 0.7);
+        /* 深色模式下的背景 */
+        color: white;
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+    }
+
+    .plant-card {
+        background-color: var(--bg-card) !important;
+        border-color: var(--el-border-color) !important;
+    }
+
+    .plant-info {
+        background-color: var(--bg-card) !important;
+    }
+
+    .plant-header h3 {
+        color: var(--text-primary) !important;
+    }
+
+    .scientific-name {
+        color: var(--text-secondary) !important;
+    }
+
+    .progress-text {
+        color: white !important;
+        /* 添加阴影以增强可读性 */
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
+        background-color: rgba(0, 0, 0, 0.5);
+        padding: 0 5px;
+        border-radius: 3px;
+    }
+
+    /* 确保按钮在夜间模式下也有足够对比度 */
+    .care-button {
+        background-color: #333333 !important;
+        border: 1px solid #444444 !important;
+        color: #e0e0e0 !important;
+    }
+
+    .water-button {
+        background-color: rgba(64, 158, 255, 0.2) !important;
+    }
+
+    .light-button {
+        background-color: rgba(230, 162, 60, 0.2) !important;
+    }
+
+    .fertilize-button {
+        background-color: rgba(103, 194, 58, 0.2) !important;
+    }
+
+    .prune-button {
+        background-color: rgba(144, 147, 153, 0.2) !important;
+    }
+
+    /* 添加养护操作按钮区域的夜间模式样式 */
+    .care-actions {
+        background-color: rgba(40, 40, 40, 0.9) !important;
+        border-top: 1px solid #333333;
+    }
+
+    /* 确保植物图像在深色背景上有足够对比度 */
+    .plant-visual {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 5px;
+    }
 }
 
 /* 确保进度条文本区域有足够空间 */

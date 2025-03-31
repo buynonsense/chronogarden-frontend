@@ -264,4 +264,31 @@ onMounted(() => {
         padding: 10px;
     }
 }
+
+/* 添加深色模式样式 */
+@media (prefers-color-scheme: dark) {
+    .era-info {
+        background-color: #2c2c2c;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        color: var(--text-primary);
+    }
+
+    .era-info h4 {
+        color: var(--primary-light);
+    }
+
+    .era-info p {
+        color: var(--text-secondary);
+    }
+
+    .empty-state {
+        background-color: #2c2c2c;
+        color: var(--text-secondary);
+    }
+
+    .era-timeline-container {
+        background-color: #252525;
+        border: 1px solid #333333;
+    }
+}
 </style>

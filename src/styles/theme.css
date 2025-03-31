@@ -29,6 +29,167 @@
   --shadow-hover: 0 6px 20px rgba(87, 188, 144, 0.2);
 }
 
+/* 夜间模式颜色变量 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* 保持相同的主题色 */
+    --primary-color: #57bc90;
+    --primary-light: #7dd3ae;
+    --primary-dark: #3c896d;
+    
+    /* 调整背景层次 */
+    --bg-light: #1c1c1c;       /* 略微调亮，不会与主背景融合 */
+    --bg-lightest: #121212;
+    --bg-card: #2c2c2c;
+    
+    /* 文本颜色 */
+    --text-primary: #e0e0e0;
+    --text-secondary: #b0b0b0;
+    --text-light: #909090;
+    
+    /* 阴影调整 */
+    --shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.3);
+    --shadow-medium: 0 4px 16px 0 rgba(0, 0, 0, 0.4);
+    
+    /* Element Plus组件覆盖 */
+    --el-bg-color: #2c2c2c;
+    --el-bg-color-overlay: #333333;
+    --el-fill-color-blank: #1c1c1c;
+    --el-border-color: #3a3a3a;
+    --el-border-color-light: #444444;
+    --el-text-color-primary: #e0e0e0;
+    --el-text-color-regular: #c0c0c0;
+  }
+  
+  /* 卡片和容器样式 */
+  .el-card {
+    background-color: var(--bg-card) !important;
+    border-color: var(--el-border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  /* 表格夜间模式 */
+  .el-table {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  .el-table th {
+    background-color: #252525 !important;
+    border-bottom-color: #3a3a3a !important;
+  }
+  
+  .el-table td, .el-table th.is-leaf {
+    border-color: #3a3a3a !important;
+  }
+  
+  /* 修复表格悬停效果 */
+  .el-table tr:hover > td {
+    background-color: rgba(87, 188, 144, 0.1) !important; /* 使用主题色的暗色变体 */
+  }
+  
+  .el-table--striped .el-table__body tr.el-table__row--striped td {
+    background-color: #272727 !important;
+  }
+  
+  /* 按钮样式 */
+  .el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--danger):not(.el-button--warning):not(.el-button--info) {
+    background-color: #2c2c2c !important;
+    border-color: #3c3c3c !important;
+    color: #d0d0d0 !important;
+  }
+  
+  /* 确保所有文本可读性 */
+  h1, h2, h3, h4, h5, h6, p, span, div {
+    color: var(--text-primary);
+  }
+  
+  .era-timeline-container {
+    background-color: #2c2c2c !important; /* 选择合适的深色背景 */
+    border: 1px solid #333333;
+  }
+  
+  .el-tag__content {
+    background-color: transparent !important; /* 或设置为其他深色背景 */
+    color: var(--text-primary) !important; /* 使用夜间模式下的文本颜色 */
+  }
+  
+  /* 基础标签样式 */
+  .el-tag {
+    background-color: #2c2c2c !important;
+    color: #e0e0e0 !important;
+    border-color: #444444 !important;
+  }
+  
+  /* 不同类型的标签 */
+  .el-tag--info {
+    background-color: #2c2c2c !important;
+    color: #e0e0e0 !important;
+    border-color: #444444 !important;
+  }
+  
+  .el-tag--success {
+    background-color: rgba(103, 194, 58, 0.1) !important;
+    color: #67c23a !important; 
+    border-color: rgba(103, 194, 58, 0.2) !important;
+  }
+  
+  .el-tag--warning {
+    background-color: rgba(230, 162, 60, 0.1) !important;
+    color: #e6a23c !important;
+    border-color: rgba(230, 162, 60, 0.2) !important;
+  }
+  
+  .el-tag--danger {
+    background-color: rgba(245, 108, 108, 0.1) !important;
+    color: #f56c6c !important;
+    border-color: rgba(245, 108, 108, 0.2) !important;
+  }
+  
+  /* 确保标签内部所有文本元素颜色正确 */
+  .el-tag span,
+  .el-tag .el-tag__content {
+    color: inherit !important;
+  }
+  
+  /* 轻量模式标签 */
+  .el-tag--light {
+    background-color: #333333 !important;
+  }
+  
+  .el-tag--light.el-tag--info {
+    color: #a6a9ad !important;
+  }
+  
+  .el-tag--light.el-tag--success {
+    color: #85ce61 !important;
+  }
+  
+  .el-tag--light.el-tag--warning {
+    color: #ebb563 !important;
+  }
+  
+  .el-tag--light.el-tag--danger {
+    color: #f78989 !important;
+  }
+  
+  /* 圆角标签和可关闭标签 */
+  .el-tag--rounded,
+  .el-tag.is-closable {
+    background-color: #2c2c2c !important;
+  }
+  
+  /* 标签关闭按钮 */
+  .el-tag .el-tag__close {
+    color: #909399 !important;
+  }
+  
+  .el-tag .el-tag__close:hover {
+    background-color: #444 !important;
+    color: #fff !important;
+  }
+}
+
 /* 全局样式 */
 body {
   background-color: var(--bg-light);

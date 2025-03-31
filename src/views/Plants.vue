@@ -258,4 +258,35 @@ onMounted(() => {
     transform: scale(1);
   }
 }
+
+@media (prefers-color-scheme: dark) {
+  .plants-container {
+    background-color: var(--bg-lightest);
+  }
+
+  .timeline-section {
+    background-color: #252525 !important;
+    /* 使用更明确的深色背景 */
+    box-shadow: var(--shadow-light);
+    border: 1px solid #333333;
+  }
+
+  .plants-grid {
+    gap: 25px;
+  }
+
+  .empty-state {
+    color: var(--text-secondary);
+  }
+
+  /* 修复卡片样式 */
+  :deep(.el-card) {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--el-border-color) !important;
+  }
+
+  :deep(.el-card__body) {
+    background-color: var(--bg-card) !important;
+  }
+}
 </style>

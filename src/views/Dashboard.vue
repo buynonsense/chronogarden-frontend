@@ -380,4 +380,61 @@ onMounted(() => {
 .empty-plants {
     padding: 20px 0;
 }
+
+@media (prefers-color-scheme: dark) {
+    .dashboard-container {
+        background-color: var(--bg-lightest);
+    }
+
+    .dashboard-card {
+        background-color: var(--bg-card) !important;
+        border-color: var(--el-border-color) !important;
+    }
+
+    /* 表格悬停样式优化 */
+    :deep(.el-table tr:hover > td) {
+        background-color: rgba(87, 188, 144, 0.1) !important;
+        /* 使用主题色的暗色变体 */
+    }
+
+    /* 确保表格边框和背景颜色与夜间模式一致 */
+    :deep(.el-table) {
+        background-color: var(--bg-card) !important;
+    }
+
+    :deep(.el-table td),
+    :deep(.el-table th) {
+        background-color: var(--bg-card) !important;
+        border-bottom-color: var(--el-border-color) !important;
+    }
+
+    :deep(.el-table--border) {
+        border-color: var(--el-border-color) !important;
+    }
+
+    /* 表格头部样式 */
+    :deep(.el-table__header-wrapper) {
+        background-color: #252525 !important;
+    }
+
+    :deep(.el-table th) {
+        background-color: #252525 !important;
+    }
+
+    /* 统计卡片夜间模式 */
+    .stat-card {
+        background-color: #2a2a2a !important;
+        border-color: #3a3a3a !important;
+    }
+
+    .plant-name-cell,
+    .status-tag {
+        color: var(--text-primary) !important;
+    }
+
+    /* 空状态文本颜色 */
+    :deep(.el-empty__description) {
+        color: var(--text-secondary) !important;
+    }
+}
 </style>
