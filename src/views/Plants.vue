@@ -18,7 +18,7 @@
     </div>
 
     <div v-else class="plants-grid">
-      <PlantCard v-for="plant in plants" :key="plant.id" :plant="plant" :interactive="true" />
+      <PlantCard v-for="plant in plants" :key="plant.id" :plant="plant" :interactive="true" :showCareActions="false" />
     </div>
   </div>
 </template>

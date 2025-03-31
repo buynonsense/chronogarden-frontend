@@ -5,36 +5,36 @@
             <div class="plant-visual" :class="plantStateClass">
                 <img :src="getPlantImage()" class="plant-image" alt="植物图片" />
 
-                <!-- 状态指示器 -->
-                <div class="plant-status-indicators" v-if="interactive">
+                <!-- 状态指示器 - 仅在我的花园中显示 -->
+                <div class="plant-status-indicators" v-if="showCareActions && interactive">
                     <div class="status-indicator water-indicator" v-if="waterLevel < 30">💧</div>
                     <div class="status-indicator light-indicator" v-if="lightLevel < 30">☀️</div>
                     <div class="status-indicator nutrient-indicator" v-if="nutrientLevel < 30">🌱</div>
                     <div class="status-indicator withered-indicator" v-if="isWithered">💀</div>
                 </div>
 
-                <!-- 生长阶段指示器 -->
-                <div class="growth-stage-indicator" v-if="growthStage">
+                <!-- 生长阶段指示器 - 仅在我的花园中显示 -->
+                <div class="growth-stage-indicator" v-if="showCareActions && growthStage && !isWithered">
                     {{ getGrowthStageEmoji() }}
                 </div>
+
+                <!-- 养护操作动画效果 -->
+                <div v-if="showAnimation" :class="['care-animation', animationClass]"></div>
             </div>
 
-            <!-- 养护操作按钮 -->
-            <div class="care-actions" v-if="interactive">
-                <button class="care-button water-button" @click="performCare('浇水')"
-                    :disabled="isWithered || waterLevel > 90">
+            <!-- 养护操作按钮区域 - 仅在我的花园中显示 -->
+            <div class="care-actions" v-if="showCareActions">
+                <button class="care-button water-button" @click="performCare('浇水')" :disabled="isWithered">
                     <span class="button-icon">💧</span>
                     <span class="button-text">浇水</span>
                 </button>
 
-                <button class="care-button light-button" @click="performCare('调整光照')"
-                    :disabled="isWithered || lightLevel > 90">
+                <button class="care-button light-button" @click="performCare('调整光照')" :disabled="isWithered">
                     <span class="button-icon">☀️</span>
                     <span class="button-text">调光</span>
                 </button>
 
-                <button class="care-button fertilize-button" @click="performCare('施肥')"
-                    :disabled="isWithered || nutrientLevel > 90">
+                <button class="care-button fertilize-button" @click="performCare('施肥')" :disabled="isWithered">
                     <span class="button-icon">🌱</span>
                     <span class="button-text">施肥</span>
                 </button>
@@ -52,14 +52,20 @@
                 <h3>{{ plant.name }}</h3>
                 <div class="tags-container">
                     <el-tag size="small" v-if="plant.era">{{ plant.era }}</el-tag>
-                    <el-tag size="small" type="success" effect="plain" v-if="plant.isCompleted">Clear</el-tag>
+                    <el-tag size="small" type="success" effect="plain"
+                        v-if="showCareActions && plant.isCompleted">已完成</el-tag>
                 </div>
             </div>
 
             <p class="scientific-name">{{ plant.scientificName }}</p>
 
-            <!-- 生长周期进度条 -->
-            <div class="growth-progress" v-if="growthDays > 0">
+            <!-- 添加这个部分，用于显示植物描述 -->
+            <p class="plant-description" v-if="!showCareActions && plant.description">
+                {{ truncateDescription(plant.description) }}
+            </p>
+
+            <!-- 生长周期进度条 - 仅在我的花园中显示 -->
+            <div class="growth-progress" v-if="showCareActions && growthDays > 0">
                 <div class="progress-label">
                     <span>生长周期: {{ getGrowthStageText() }}</span>
                     <span>{{ growthDays }}/14天</span>
@@ -68,8 +74,8 @@
                 </el-progress>
             </div>
 
-            <!-- 植物状态指标 -->
-            <div class="plant-status" v-if="!isWithered">
+            <!-- 植物状态指标 - 仅在我的花园中显示 -->
+            <div class="plant-status" v-if="showCareActions && !isWithered">
                 <div class="status-label">
                     <span>状态: </span>
                     <el-tag size="small" :type="healthStateType">{{ healthStateText }}</el-tag>
@@ -104,21 +110,18 @@
 
             <!-- 按钮区域 -->
             <div class="plant-actions">
-                <el-button v-if="isWithered" type="danger" class="revive-button" @click="startGrowth">
-                    重新养护
-                </el-button>
-                <el-button v-else-if="!growthStarted" type="primary" class="start-button" @click="startGrowth">
-                    开始养护
-                </el-button>
-                <el-button v-else type="primary" class="details-button" @click="viewDetails">
+                <!-- 植物图鉴中的操作按钮 -->
+                <div v-if="!showCareActions" class="catalog-actions">
+                    <el-button type="primary" @click="adoptPlant" class="adopt-button">
+                        领养植物
+                    </el-button>
+                </div>
+
+                <!-- 所有场景都有的查看详情按钮 -->
+                <el-button type="default" @click="viewDetails" class="details-button">
                     查看详情
                 </el-button>
             </div>
-        </div>
-
-        <!-- 特效动画层 -->
-        <div class="animation-container" v-if="showAnimation">
-            <div :class="animationClass"></div>
         </div>
     </el-card>
 </template>
@@ -138,6 +141,11 @@ const props = defineProps({
     interactive: {
         type: Boolean,
         default: true
+    },
+    // 新增：控制是否显示养护操作
+    showCareActions: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -381,6 +389,40 @@ const viewDetails = () => {
     router.push(`/plant/${props.plant.id}`);
 };
 
+// 新增：领养植物方法
+const adoptPlant = async () => {
+    try {
+        await axios.post(`/api/plants/${props.plant.id}/adopt`);
+
+        // 记录养护记录
+        await addCareRecord({
+            plant: { id: props.plant.id },
+            actionType: '领养植物',
+            notes: '开始植物生长周期'
+        });
+
+        ElMessage.success('成功领养植物！请前往"我的花园"照料它');
+
+        // 可选：跳转到我的花园
+        // router.push('/my-garden');
+    } catch (error) {
+        console.error('领养植物失败:', error);
+        ElMessage.error('领养植物失败，请稍后再试');
+    }
+};
+
+// 新增：截断植物描述的方法
+const truncateDescription = (description) => {
+    const maxLength = 100;
+    return description.length > maxLength ? description.slice(0, maxLength) + '...' : description;
+};
+
+// // 截断过长的描述文本
+// const truncateDescription = (text) => {
+//     if (!text) return '';
+//     return text.length > 120 ? text.substring(0, 120) + '...' : text;
+// };
+
 onMounted(() => {
     // 添加数据监听
     loadPlantGrowthStatus();
@@ -609,6 +651,19 @@ watch(() => props.plant.id, () => {
     margin-bottom: 12px;
 }
 
+.plant-description {
+color: var(--text-primary);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    line-height: 1.4;
+    max-height: 5.6em; /* 大约4行文本 */
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+
 /* 生长周期进度 */
 .growth-progress {
     margin-bottom: 15px;
@@ -730,6 +785,16 @@ watch(() => props.plant.id, () => {
         background-color: rgba(0, 0, 0, 0.2);
         border-radius: 8px;
         padding: 5px;
+    }
+
+    /* 确保领养按钮在深色模式下可见 */
+    .adopt-button {
+        background-color: var(--primary-color) !important;
+        color: white !important;
+    }
+
+    .plant-description {
+        color: var(--text-secondary) !important;
     }
 }
 
@@ -1025,5 +1090,15 @@ watch(() => props.plant.id, () => {
         transform: translateX(-50%) translateY(100px) scale(2);
         opacity: 0;
     }
+}
+
+/* 添加领养按钮样式 */
+.catalog-actions {
+    margin-bottom: 10px;
+}
+
+.adopt-button {
+    width: 100%;
+    font-weight: 500;
 }
 </style>

@@ -7,6 +7,7 @@ import Plants from '../views/Plants.vue'
 import PlantDetail from '../views/PlantDetail.vue'
 import CareRecords from '../views/CareRecords.vue'
 import NotAuthorized from '../views/NotAuthorized.vue'  // 添加未授权页面
+import MyGarden from '../views/MyGarden.vue'
 
 const routes = [
     {
@@ -64,6 +65,12 @@ const routes = [
         path: '/not-authorized',
         name: 'NotAuthorized',
         component: NotAuthorized
+    },
+    {
+        path: '/my-garden',
+        name: 'MyGarden',
+        component: MyGarden,
+        meta: { requiresAuth: true }
     }
 ]
 

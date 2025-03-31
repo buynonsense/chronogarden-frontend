@@ -93,6 +93,28 @@
             </el-table>
             <el-empty v-else description="暂无需要关注的植物" class="empty-plants"></el-empty>
         </el-card>
+
+        <!-- 快速导航卡片 -->
+        <el-row :gutter="20" class="dashboard-section">
+            <el-col :xs="24" :sm="8">
+                <el-card class="nav-card">
+                    <template #header>
+                        <div class="nav-header">
+                            <span>我的花园</span>
+                            <el-icon>
+                                <Leaf />
+                            </el-icon>
+                        </div>
+                    </template>
+                    <div class="nav-content">
+                        <p>探索并照料您已领养的珍稀植物</p>
+                        <el-button type="primary" @click="$router.push('/my-garden')">进入花园</el-button>
+                    </div>
+                </el-card>
+            </el-col>
+
+            <!-- 其他导航卡片 -->
+        </el-row>
     </div>
 </template>
 
@@ -379,6 +401,39 @@ onMounted(() => {
 
 .empty-plants {
     padding: 20px 0;
+}
+
+.dashboard-section {
+    margin-top: 30px;
+}
+
+.nav-card {
+    border-radius: var(--border-radius-medium);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.nav-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.nav-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.nav-content {
+    text-align: center;
+    padding: 15px;
+}
+
+.nav-content p {
+    margin-bottom: 15px;
+    color: var(--text-secondary);
 }
 
 @media (prefers-color-scheme: dark) {

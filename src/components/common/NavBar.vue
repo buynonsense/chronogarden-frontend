@@ -14,6 +14,9 @@
                 <el-menu-item index="/">首页 🏠</el-menu-item>
                 <!-- <el-menu-item index="/eras">时间节点 🕰️</el-menu-item> -->
                 <el-menu-item index="/plants">植物图鉴 🌱</el-menu-item>
+                <el-menu-item index="/my-garden" v-if="isLoggedIn">
+                    <span>我的花园 🌿</span>
+                </el-menu-item>
                 <div class="flex-spacer"></div>
                 <template v-if="isLoggedIn">
                     <el-menu-item index="/dashboard">个人仪表盘 📊</el-menu-item>
@@ -32,6 +35,8 @@
                     <router-link to="/" class="mobile-menu-item" @click="closeMobileMenu">首页 🏠</router-link>
                     <!-- <router-link to="/eras" class="mobile-menu-item" @click="closeMobileMenu">时间节点 🕰️</router-link> -->
                     <router-link to="/plants" class="mobile-menu-item" @click="closeMobileMenu">植物图鉴 🌱</router-link>
+                    <router-link to="/my-garden" class="mobile-menu-item" v-if="isLoggedIn"
+                        @click="closeMobileMenu">我的花园</router-link>
                     <template v-if="isLoggedIn">
                         <router-link to="/dashboard" class="mobile-menu-item" @click="closeMobileMenu">个人仪表盘
                             📊</router-link>
