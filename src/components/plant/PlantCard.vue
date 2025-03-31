@@ -632,7 +632,8 @@ watch(() => props.plant.id, () => {
 
 .progress-text {
     position: absolute;
-    right: 15px;
+    right: 5px;
+    /* 将15px改为5px，使文本更靠右 */
     top: 50%;
     transform: translateY(-50%);
     font-size: 14px;
