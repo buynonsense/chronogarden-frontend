@@ -55,7 +55,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '../../store/user';
 
@@ -65,7 +65,12 @@ const userStore = useUserStore();
 const isLoggedIn = computed(() => userStore.isAuthenticated);
 const mobileMenuOpen = ref(false);
 
-const activeIndex = computed(() => '/' + route.path.split('/')[1]);
+// 修改activeIndex的计算方式
+const activeIndex = computed(() => {
+    // 提取路径的第一段，比如/my-garden/123会得到/my-garden
+    const firstSegment = '/' + (route.path.split('/')[1] || '');
+    return firstSegment;
+});
 
 const toggleMobileMenu = () => {
     mobileMenuOpen.value = !mobileMenuOpen.value;
@@ -85,6 +90,11 @@ const logout = () => {
     userStore.logout();
     router.push('/');
 };
+
+watch(() => route.path, (newPath) => {
+    console.log('Current route path:', newPath);
+    console.log('Computed activeIndex:', activeIndex.value);
+}, { immediate: true });
 </script>
 
 <style scoped>
@@ -211,5 +221,44 @@ const logout = () => {
         align-items: center;
         height: 60px;
     }
+}
+
+/* 黑暗模式下的导航栏样式 */
+@media (prefers-color-scheme: dark) {
+
+    /* 活动菜单项黄金色特效 */
+    .el-menu-item.is-active {
+        background-color: #3c896d !important;
+        /* 深色背景 */
+        color: #fffde7 !important;
+        /* 黄金色文字 */
+        font-weight: bold !important;
+        border-bottom: 3px solid #fffde7 !important;
+        /* 黄金色底边 */
+    }
+
+    /* 确保菜单文字颜色 */
+    .nav-menu {
+        background-color: #2c2c2c !important;
+        /* 深色导航背景 */
+    }
+
+    .el-menu-item {
+        color: #e0e0e0 !important;
+        /* 普通菜单项文字颜色 */
+    }
+
+    .el-menu-item:hover {
+        background-color: #3c896d !important;
+        /* 悬停时背景色 */
+        color: #ffffff !important;
+        /* 悬停时文字颜色 */
+    }
+}
+
+/* 增强活动菜单项在所有模式下的可见性 */
+.el-menu-item.is-active {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    border-bottom: 3px solid #fffde7 !important;
 }
 </style>

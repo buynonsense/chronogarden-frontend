@@ -22,7 +22,7 @@
                         <div v-show="showWaterEffect" class="water-effect"></div>
                         <div v-show="showFertilizeEffect" class="fertilize-effect"></div>
                         <div v-show="showPruneEffect" class="prune-effect"></div>
-                        <div v-show="showSoilEffect" class="soil-effect"></div>
+                        <!-- <div v-show="showSoilEffect" class="soil-effect"></div> -->
                     </div>
 
                     <!-- 花盆/土壤区域 -->
@@ -46,7 +46,7 @@
                         <span class="action-name">修剪</span>
                     </button>
 
-                    <button class="care-action-btn soil-btn" @click="performCareAction('翻土')">
+                    <!-- <button class="care-action-btn soil-btn" @click="performCareAction('翻土')">
                         <span class="action-icon">🌱</span>
                         <span class="action-name">翻土</span>
                     </button>
@@ -54,7 +54,7 @@
                     <button class="care-action-btn pest-btn" @click="performCareAction('病虫防治')">
                         <span class="action-icon">🐛</span>
                         <span class="action-name">病虫防治</span>
-                    </button>
+                    </button> -->
                 </div>
 
                 <!-- 操作反馈提示 -->
@@ -92,27 +92,42 @@
                     <!-- 植物健康状态区域 -->
                     <div class="plant-health-section">
                         <div class="stat-item">
-                            <span class="stat-icon">💧</span>
-                            <el-progress :percentage="plantStatus.waterLevel || 0"
-                                :status="getStatProgressStatus(plantStatus.waterLevel)"
-                                :color="getStatProgressColor(plantStatus.waterLevel)">
-                            </el-progress>
+                            <div class="stat-header">
+                                <span class="stat-icon">💧</span>
+                                <span class="stat-name">水分</span>
+                                <span class="stat-value">{{ plantStatus?.waterLevel || 0 }}%</span>
+                            </div>
+                            <div class="custom-progress-container">
+                                <div class="custom-progress-bar"
+                                    :style="{ width: `${plantStatus?.waterLevel || 0}%`, backgroundColor: '#409EFF' }">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="stat-item">
-                            <span class="stat-icon">☀️</span>
-                            <el-progress :percentage="plantStatus.lightLevel || 0"
-                                :status="getStatProgressStatus(plantStatus.lightLevel)"
-                                :color="getStatProgressColor(plantStatus.lightLevel)">
-                            </el-progress>
+                            <div class="stat-header">
+                                <span class="stat-icon">☀️</span>
+                                <span class="stat-name">光照</span>
+                                <span class="stat-value">{{ plantStatus?.lightLevel || 0 }}%</span>
+                            </div>
+                            <div class="custom-progress-container">
+                                <div class="custom-progress-bar"
+                                    :style="{ width: `${plantStatus?.lightLevel || 0}%`, backgroundColor: '#E6A23C' }">
+                                </div>
+                            </div>
                         </div>
 
                         <div class="stat-item">
-                            <span class="stat-icon">🌱</span>
-                            <el-progress :percentage="plantStatus.nutrientLevel || 0"
-                                :status="getStatProgressStatus(plantStatus.nutrientLevel)"
-                                :color="getStatProgressColor(plantStatus.nutrientLevel)">
-                            </el-progress>
+                            <div class="stat-header">
+                                <span class="stat-icon">🌱</span>
+                                <span class="stat-name">养分</span>
+                                <span class="stat-value">{{ plantStatus?.nutrientLevel || 0 }}%</span>
+                            </div>
+                            <div class="custom-progress-container">
+                                <div class="custom-progress-bar"
+                                    :style="{ width: `${plantStatus?.nutrientLevel || 0}%`, backgroundColor: '#67C23A' }">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -231,9 +246,19 @@ const isGrowing = ref(false);
 const showWaterEffect = ref(false);
 const showFertilizeEffect = ref(false);
 const showPruneEffect = ref(false);
-const showSoilEffect = ref(false);
+// const showSoilEffect = ref(false);
 const actionFeedback = ref(null);
-const plantStatus = ref(null);
+const plantStatus = ref({
+    waterLevel: 0,
+    lightLevel: 0,
+    nutrientLevel: 0,
+    healthStatus: 0,
+    growthDays: 0,
+    totalDays: 14,
+    growthStage: "",
+    isWithered: false,
+    isCompleted: false
+});
 const statusPollingInterval = ref(null);
 const isDevelopmentMode = ref(process.env.NODE_ENV === 'development');
 
@@ -326,10 +351,10 @@ const showActionEffect = (actionType) => {
             showPruneEffect.value = true;
             setTimeout(() => { showPruneEffect.value = false; }, 2000);
             break;
-        case '翻土':
-            showSoilEffect.value = true;
-            setTimeout(() => { showSoilEffect.value = false; }, 2000);
-            break;
+        // case '翻土':
+        //     showSoilEffect.value = true;
+        //     setTimeout(() => { showSoilEffect.value = false; }, 2000);
+        //     break;
     }
 };
 
@@ -344,11 +369,11 @@ const getActionTagType = (actionType) => {
     const typeMap = {
         '浇水': 'primary',
         '施肥': 'success',
-        '修剪': 'warning',
-        '翻土': 'info',
-        '病虫防治': 'danger'
+        '修剪': 'warning'
+        // '翻土': 'info',
+        // '病虫防治': 'danger'
     };
-    return typeMap[actionType] || 'default';
+    return typeMap[actionType] || 'info'; // 将 'default' 改为 'info'
 };
 
 // 判断是否可以删除记录（只能删除24小时内的记录）
@@ -416,11 +441,25 @@ const formatDate = (dateString) => {
 // 加载植物生长状态
 const loadPlantGrowthStatus = async () => {
     try {
+        console.log('正在加载植物状态...');
         const response = await axios.get(`/api/plants/${plantId}/growth-status`);
-        plantStatus.value = response.data;
+        console.log('后端返回的数据:', response.data);
 
-        // 更新植物动画状态
-        updatePlantAnimation();
+        // 确保所有需要的字段都存在
+        plantStatus.value = {
+            waterLevel: Number(response.data.waterLevel || 0),
+            lightLevel: Number(response.data.lightLevel || 0),
+            nutrientLevel: Number(response.data.nutrientLevel || 0),
+            healthStatus: Number(response.data.healthStatus || 0),
+            growthDays: Number(response.data.growthDays || 0),
+            totalDays: Number(response.data.totalDays || 14),
+            growthStage: response.data.growthStage || "",
+            healthState: response.data.healthState || "healthy",
+            isWithered: Boolean(response.data.isWithered),
+            isCompleted: Boolean(response.data.isCompleted)
+        };
+
+        console.log('处理后的植物状态:', plantStatus.value);
     } catch (error) {
         console.error('加载植物生长状态失败:', error);
     }
@@ -757,7 +796,8 @@ onUnmounted(() => {
     border-color: #ff9800;
 }
 
-.soil-btn {
+/* 翻土和病虫防治按钮样式 */
+/* .soil-btn {
     background-color: #f5f5f5;
     border-color: #795548;
 }
@@ -765,7 +805,7 @@ onUnmounted(() => {
 .pest-btn {
     background-color: #fce4ec;
     border-color: #e91e63;
-}
+} */
 
 /* 操作效果动画 */
 .water-effect {
@@ -1007,14 +1047,41 @@ onUnmounted(() => {
 }
 
 .stat-item {
+    margin-bottom: 15px;
+}
+
+.stat-header {
     display: flex;
     align-items: center;
-    margin-bottom: 12px;
-    gap: 10px;
+    margin-bottom: 5px;
 }
 
 .stat-icon {
-    font-size: 1.2em;
+    font-size: 18px;
+    margin-right: 10px;
+}
+
+.stat-name {
+    font-weight: bold;
+    margin-right: auto;
+}
+
+.stat-value {
+    color: var(--text-secondary);
+}
+
+.custom-progress-container {
+    width: 100%;
+    height: 10px;
+    background-color: #e9e9e9;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.custom-progress-bar {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.3s ease;
 }
 
 .growth-control-section {
@@ -1076,6 +1143,56 @@ onUnmounted(() => {
 
     100% {
         transform: scale(1);
+    }
+}
+
+/* 黑暗模式下按钮样式调整 */
+@media (prefers-color-scheme: dark) {
+
+    /* 养护操作按钮文字颜色 */
+    .care-action-btn {
+        background-color: #333333 !important;
+        border-color: #444444 !important;
+    }
+
+    .care-action-btn .action-name {
+        color: #e0e0e0 !important;
+        /* 确保文字在深色背景上可读 */
+    }
+
+    /* 特定操作按钮的样式调整 */
+    .water-btn {
+        background-color: rgba(33, 150, 243, 0.2) !important;
+        border-color: #2196f3 !important;
+    }
+
+    .fertilize-btn {
+        background-color: rgba(76, 175, 80, 0.2) !important;
+        border-color: #4caf50 !important;
+    }
+
+    .prune-btn {
+        background-color: rgba(255, 152, 0, 0.2) !important;
+        border-color: #ff9800 !important;
+    }
+
+    /* 悬停效果增强 */
+    .care-action-btn:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    /* 确保操作图标在深色背景下可见 */
+    .action-icon {
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+    }
+
+    .custom-progress-container {
+        background-color: #333;
+    }
+
+    .stat-value {
+        color: #bbb;
     }
 }
 </style>
