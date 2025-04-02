@@ -687,7 +687,9 @@ watch(() => props.plant.id, () => {
     justify-content: center;
     gap: 8px;
     padding: 10px;
-    background-color: rgba(40, 40, 40, 0.95) !important;
+    /* 修改为浅色背景 */
+    background-color: rgba(240, 240, 240, 0.95) !important;
+    border-top: 1px solid #e0e0e0;
     border-radius: 0 0 var(--border-radius-medium) var(--border-radius-medium);
 }
 
@@ -724,6 +726,8 @@ watch(() => props.plant.id, () => {
 
 .button-text {
     font-size: 0.8rem;
+    color: #333;
+    /* 确保在浅色背景上文字清晰可见 */
 }
 
 .water-button {
@@ -935,6 +939,10 @@ watch(() => props.plant.id, () => {
     .care-actions {
         background-color: rgba(40, 40, 40, 0.9) !important;
         border-top: 1px solid #333333;
+    }
+
+    .care-button .button-text {
+        color: #e0e0e0;
     }
 
     .plant-visual {

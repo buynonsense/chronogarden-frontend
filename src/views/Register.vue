@@ -31,10 +31,12 @@
 <script setup>
 import { ref, reactive } from 'vue';
 import { useUserStore } from '../store/user';
+import { useRouter } from 'vue-router'; // 添加路由导入
 import { ElMessage } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 
 const userStore = useUserStore();
+const router = useRouter(); // 初始化router
 const registerFormRef = ref(null);
 const loading = ref(false);
 
@@ -91,7 +93,12 @@ const handleRegister = async () => {
                     password: registerForm.password
                 };
                 await userStore.register(userData);
-                ElMessage.success('注册成功，请登录');
+                ElMessage.success('注册成功，正在跳转到登录页面...');
+
+                // 添加延时跳转，让用户能看到成功消息
+                setTimeout(() => {
+                    router.push('/login');
+                }, 1500);
             } catch (error) {
                 console.error(error);
                 ElMessage.error('注册失败：' + (error.response?.data || '未知错误'));
