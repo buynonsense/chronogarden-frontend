@@ -65,8 +65,11 @@
                 <h3>{{ plant.name }}</h3>
                 <div class="tags-container">
                     <el-tag size="small" v-if="plant.era">{{ plant.era }}</el-tag>
-                    <el-tag size="small" type="success" effect="plain"
-                        v-if="showCareActions && plant.isCompleted">已完成</el-tag>
+                    <el-tag size="small" type="success" effect="plain" v-if="showCareActions && plant.isCompleted"
+                        class="clear-tag">
+                        <span class="clear-text">CLEAR</span>
+                        <span class="clear-icon">🏆</span>
+                    </el-tag>
                 </div>
             </div>
 
@@ -130,8 +133,27 @@
                     </el-button>
                 </div>
 
-                <!-- 所有场景都有的查看详情按钮 -->
-                <el-button type="default" @click="viewDetails" class="details-button">
+                <!-- 查看详情按钮根据不同场景有不同行为 -->
+                <el-popover v-if="!showCareActions" placement="top" :width="300" trigger="click">
+                    <template #reference>
+                        <el-button type="default" class="details-button">
+                            查看详情
+                        </el-button>
+                    </template>
+                    <template #default>
+                        <h4>{{ plant.name }}</h4>
+                        <p class="popup-scientific-name">{{ plant.scientificName }}</p>
+                        <div class="popup-description">
+                            {{ plant.description || '暂无详细描述' }}
+                        </div>
+                        <div class="popup-era" v-if="plant.era">
+                            <strong>时代:</strong> {{ plant.era }}
+                        </div>
+                    </template>
+                </el-popover>
+
+                <!-- 我的花园模式下，仍然跳转到详情页 -->
+                <el-button v-else type="default" @click="viewDetails" class="details-button">
                     查看详情
                 </el-button>
             </div>
@@ -851,6 +873,12 @@ watch(() => props.plant.id, () => {
         background-color: rgba(255, 193, 7, 0.7);
         color: #fff;
     }
+
+    .clear-tag {
+        background-color: #ffd700 !important;
+        color: #000 !important;
+        border-color: #7d4e00 !important;
+    }
 }
 
 /* 确保进度条文本区域有足够空间 */
@@ -1208,5 +1236,80 @@ watch(() => props.plant.id, () => {
 .adopt-button {
     width: 100%;
     font-weight: 500;
+}
+
+/* 添加到<style>部分 */
+.clear-tag {
+    background-color: #ffd700 !important;
+    color: #7d4e00 !important;
+    border-color: #7d4e00 !important;
+    font-weight: bold;
+    padding: 3px 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: glow 2s infinite alternate;
+}
+
+.clear-text {
+    letter-spacing: 1px;
+}
+
+.clear-icon {
+    font-size: 14px;
+}
+
+@keyframes glow {
+    0% {
+        box-shadow: 0 0 2px gold;
+    }
+
+    100% {
+        box-shadow: 0 0 8px gold, 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    .clear-tag {
+        background-color: #ffd700 !important;
+        color: #000 !important;
+        border-color: #7d4e00 !important;
+    }
+}
+
+/* 在<style>部分添加 */
+.popup-scientific-name {
+    font-style: italic;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+.popup-description {
+    margin-bottom: 15px;
+    line-height: 1.5;
+    color: var(--text-primary);
+}
+
+.popup-era {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* 确保弹窗在深色模式下也有正确的样式 */
+:deep(.el-popover) {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+    :deep(.el-popover) {
+        background-color: #333;
+        border-color: #444;
+    }
+
+    .popup-description,
+    .popup-era {
+        color: #e0e0e0;
+    }
 }
 </style>

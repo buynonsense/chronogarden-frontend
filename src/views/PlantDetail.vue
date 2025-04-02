@@ -136,10 +136,6 @@
 
                     <!-- 生长控制按钮区域 -->
                     <div class="growth-control-section">
-                        <el-button type="primary" @click="startGrowth" v-if="!isActiveGrowth" :disabled="loading">
-                            {{ plantStatus.isWithered ? '重新养护' : '开始养护' }}
-                        </el-button>
-
                         <!-- 开发模式: 手动衰减按钮 -->
                         <div v-if="isDevelopmentMode" class="development-controls">
                             <el-divider>开发工具</el-divider>
@@ -148,6 +144,13 @@
                                 <el-button type="danger" size="small" @click="applyDecay('drought')">干旱事件</el-button>
                                 <el-button type="danger" size="small" @click="applyDecay('pest')">虫害事件</el-button>
                                 <el-button type="danger" size="small" @click="applyDecay('coldwave')">寒潮事件</el-button>
+                            </div>
+
+                            <!-- 添加时间快进功能 -->
+                            <el-divider>时间快进</el-divider>
+                            <div class="time-buttons">
+                                <el-button type="primary" size="small" @click="advanceTime(12)">增加12h</el-button>
+                                <el-button type="primary" size="small" @click="advanceTime(24)">增加24h</el-button>
                             </div>
                         </div>
                     </div>
@@ -313,10 +316,24 @@ const performCareAction = async (actionType) => {
         if (actionType === '收获') {
             const response = await axios.post(`/api/plants/${plantId}/harvest`);
             if (response.data.isCompleted) {
-                actionFeedback.value = {
-                    type: 'success',
-                    message: '恭喜！您已成功收获并完成了这株植物的培育！'
-                };
+                // 使用ElementPlus的全页面通知代替普通反馈
+                ElMessageBox.alert(
+                    '您已成功培育并收获了这株珍稀植物！这是一项了不起的成就！',
+                    '植物培育完成！',
+                    {
+                        confirmButtonText: '前往我的花园',
+                        type: 'success',
+                        center: true,
+                        dangerouslyUseHTMLString: true,
+                        customClass: 'clear-message-box',
+                    }
+                ).then(() => {
+                    // 点击确认按钮后导航到我的花园
+                    router.push('/my-garden');
+                }).catch(() => {
+                    // 即使用户关闭弹窗也导航到我的花园
+                    router.push('/my-garden');
+                });
             }
         } else {
             // 其他养护操作的逻辑...
@@ -476,28 +493,6 @@ const loadPlantGrowthStatus = async () => {
     }
 };
 
-// 开始植物养护
-const startGrowth = async () => {
-    try {
-        await axios.post(`/api/plants/${plantId}/start-growth`);
-        ElMessage.success('开始养护植物！');
-        await loadPlantGrowthStatus();
-
-        // 添加一条养护记录
-        await apiAddCareRecord({
-            plant: { id: plantId },
-            actionType: plantStatus.value.isWithered ? '重新养护' : '开始养护',
-            notes: '开始植物生长周期'
-        });
-
-        // 重新加载养护记录
-        await loadCareRecords();
-    } catch (error) {
-        console.error('开始养护失败:', error);
-        ElMessage.error('开始养护失败，请稍后再试');
-    }
-};
-
 // 执行手动衰减（仅开发模式）
 const applyDecay = async (decayType) => {
     if (!isDevelopmentMode.value) return;
@@ -511,6 +506,22 @@ const applyDecay = async (decayType) => {
         ElMessage.error('执行衰减失败，请稍后再试');
     }
 };
+
+// 时间快进（仅开发模式）
+const advanceTime = async (hours) => {
+    if (!isDevelopmentMode.value) return;
+
+    try {
+        await axios.post(`/api/plants/${plantId}/advance-time?hours=${hours}`);
+        ElMessage.success(`成功快进 ${hours} 小时！`);
+        await loadPlantGrowthStatus();
+        await loadCareRecords();
+    } catch (error) {
+        console.error('时间快进失败:', error);
+        ElMessage.error('时间快进失败，请稍后再试');
+    }
+};
+
 
 // 获取衰减类型文本
 const getDecayTypeText = (decayType) => {
@@ -1144,6 +1155,21 @@ onUnmounted(() => {
     margin-top: 10px;
 }
 
+.time-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .time-buttons .el-button--primary {
+        background-color: rgba(64, 158, 255, 0.2) !important;
+        border-color: #409EFF !important;
+        color: #e0e0e0 !important;
+    }
+}
+
 @keyframes pulseGently {
     0% {
         transform: scale(1);
@@ -1245,6 +1271,55 @@ onUnmounted(() => {
 
     .stat-value {
         color: #bbb;
+    }
+}
+
+/* Clear成就消息框样式 */
+:deep(.clear-message-box) {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    border: 2px solid gold;
+}
+
+:deep(.clear-message-box .el-message-box__header) {
+    background-color: #4CAF50;
+    color: white;
+    padding: 15px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+:deep(.clear-message-box .el-message-box__title) {
+    color: white;
+    font-size: 22px;
+    text-align: center;
+}
+
+:deep(.clear-message-box .el-message-box__content) {
+    padding: 30px 20px;
+    font-size: 18px;
+    text-align: center;
+}
+
+:deep(.clear-message-box .el-message-box__btns) {
+    justify-content: center;
+}
+
+:deep(.clear-message-box .el-button--primary) {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :deep(.clear-message-box) {
+        background-color: #333;
+        border: 2px solid gold;
+    }
+
+    :deep(.clear-message-box .el-message-box__content) {
+        color: #eee;
     }
 }
 </style>

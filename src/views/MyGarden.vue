@@ -16,19 +16,24 @@
         </div>
 
         <div v-else class="plants-grid">
-            <PlantCard v-for="plant in myPlants" :key="plant.id" :plant="plant" :showCareActions="true" />
+            <PlantCard v-for="plant in myPlants" :key="plant.id" :plant="plant" :showCareActions="true">
+                <el-tag size="small" type="success" effect="plain"
+                    v-if="showCareActions && plant.isCompleted">已完成</el-tag>
+            </PlantCard>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import PlantCard from '../components/plant/PlantCard.vue';
 import axios from 'axios';
 
 const myPlants = ref([]);
 const loading = ref(true);
+const route = useRoute();
 
 // 加载用户的植物
 const loadUserPlants = async () => {
@@ -46,6 +51,13 @@ const loadUserPlants = async () => {
 
 onMounted(() => {
     loadUserPlants();
+});
+
+// 路由变化时刷新数据
+watch(() => route.path, () => {
+    if (route.path === '/my-garden') {
+        loadUserPlants();
+    }
 });
 </script>
 
