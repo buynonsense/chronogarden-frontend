@@ -155,56 +155,14 @@ const loadData = async () => {
         const response = await getUserCareRecords();
         careRecords.value = response.data;
 
-        // 获取用户所有植物
-        const plantsResponse = await axios.get('/api/plants/user/adopted');
-        const userPlants = plantsResponse.data;
-
-        // 获取所有植物的生长状态，筛选出需要关注的植物
-        const plantsNeedingAttention = [];
-
-        for (const plant of userPlants) {
-            // 只处理未完成且未枯萎的植物
-            if (!plant.isCompleted && !plant.isWithered) {
-                try {
-                    // 获取每个植物的生长状态
-                    const statusResponse = await axios.get(`/api/plants/${plant.id}/growth-status`);
-                    const status = statusResponse.data;
-
-                    // 判断是否需要关注：任一值低于30
-                    if (status.waterLevel < 30 || status.lightLevel < 30 || status.nutrientLevel < 30) {
-                        // 确定具体哪个指标需要关注
-                        let attentionReason = [];
-                        if (status.waterLevel < 30) attentionReason.push('缺水');
-                        if (status.lightLevel < 30) attentionReason.push('缺光');
-                        if (status.nutrientLevel < 30) attentionReason.push('缺肥');
-
-                        plantsNeedingAttention.push({
-                            id: plant.id,
-                            name: plant.name,
-                            status: attentionReason.join('/'),
-                            lastCareDate: '需要养护'
-                        });
-                    }
-                } catch (error) {
-                    console.error(`获取植物${plant.id}的状态失败:`, error);
-                }
-            }
-        }
-
-        // 查找最后养护时间
-        for (let plant of plantsNeedingAttention) {
-            const plantRecords = careRecords.value.filter(record =>
-                record.plant && record.plant.id === plant.id
-            ).sort((a, b) =>
-                new Date(b.timestamp) - new Date(a.timestamp)
-            );
-
-            if (plantRecords.length > 0) {
-                plant.lastCareDate = new Date(plantRecords[0].timestamp).toLocaleDateString('zh-CN');
-            }
-        }
-
-        plantsNeedingCare.value = plantsNeedingAttention;
+        // 获取需要关注的植物
+        const plantsResponse = await axios.get('/api/plants/user/needing-care');
+        plantsNeedingCare.value = plantsResponse.data.map(plant => ({
+            ...plant,
+            lastCareDate: plant.lastCareDate ?
+                new Date(plant.lastCareDate).toLocaleDateString('zh-CN') :
+                '从未养护'
+        }));
     } catch (error) {
         console.error('获取数据失败:', error);
         ElMessage.error('获取数据失败');
