@@ -43,6 +43,19 @@
                     <span class="button-icon">✂️</span>
                     <span class="button-text">修剪</span>
                 </button>
+
+                <!-- 添加收获按钮 -->
+                <button v-if="growthStage === 'fruit' && !isWithered" class="care-button harvest-button"
+                    @click="performCare('收获')">
+                    <span class="button-icon">🍎</span>
+                    <span class="button-text">收获</span>
+                </button>
+            </div>
+
+            <!-- 添加收获提示，当植物到达结果期时显示 -->
+            <div v-if="showCareActions && growthStage === 'fruit' && !isWithered" class="harvest-reminder">
+                <span class="reminder-icon">⏰</span>
+                <span class="reminder-text">果实成熟，请及时收获!</span>
             </div>
         </div>
 
@@ -161,6 +174,7 @@ const isWithered = ref(props.plant.isWithered || false);
 const growthStarted = ref(!!props.plant.growthStartTime);
 const showAnimation = ref(false);
 const animationClass = ref('');
+const isCompleted = ref(false);
 
 // 修改加载植物生长状态的函数
 const loadPlantGrowthStatus = async () => {
@@ -332,32 +346,43 @@ const performCare = async (actionType) => {
             lightLevel.value = Math.min(100, lightLevel.value + 25);
             nutrientLevel.value = Math.min(100, nutrientLevel.value + 20);
             break;
+
+        case '收获':
+            animationClass.value = 'harvest-animation';
+            // 收获不需要更新水分等属性，因为这是完成操作
+            break;
     }
 
+    // 添加延时，让动画有时间显示
+    setTimeout(() => {
+        showAnimation.value = false;
+    }, 2000);
+
     try {
-        // 记录养护操作并通知后端
+        // 调用API记录养护操作
         await addCareRecord({
             plant: { id: props.plant.id },
             actionType: actionType,
-            notes: '' // 自动操作不需要备注
+            notes: `执行了${actionType}操作`
         });
 
-        // 重新获取植物状态
+        // 如果是收获操作，调用特定API
+        if (actionType === '收获') {
+            const response = await axios.post(`/api/plants/${props.plant.id}/harvest`);
+            if (response.data.isCompleted) {
+                ElMessage.success('恭喜！您已成功收获并完成了这株植物的培育！');
+                // 更新植物状态
+                isCompleted.value = true;
+            }
+        } else {
+            // 其他养护操作API请求...
+        }
+
+        // 重新加载植物状态
         await loadPlantGrowthStatus();
-
-        ElMessage.success({
-            message: `${actionType}成功!`,
-            duration: 1500
-        });
-
     } catch (error) {
-        console.error('养护操作失败:', error);
-        ElMessage.error('养护操作失败');
-    } finally {
-        // 3秒后隐藏动画
-        setTimeout(() => {
-            showAnimation.value = false;
-        }, 3000);
+        console.error(`${actionType}失败:`, error);
+        ElMessage.error(`${actionType}失败，请稍后再试`);
     }
 };
 
@@ -416,12 +441,6 @@ const truncateDescription = (description) => {
     const maxLength = 100;
     return description.length > maxLength ? description.slice(0, maxLength) + '...' : description;
 };
-
-// // 截断过长的描述文本
-// const truncateDescription = (text) => {
-//     if (!text) return '';
-//     return text.length > 120 ? text.substring(0, 120) + '...' : text;
-// };
 
 onMounted(() => {
     // 添加数据监听
@@ -618,6 +637,34 @@ watch(() => props.plant.id, () => {
     background-color: #f5f5f5;
 }
 
+.harvest-button {
+    background-color: #ffd54f;
+    border-color: #ffc107;
+}
+
+/* 收获提示样式 */
+.harvest-reminder {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 193, 7, 0.9);
+    color: #7d5700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    z-index: 20;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: pulse 2s infinite;
+}
+
+.reminder-icon {
+    font-size: 1rem;
+}
+
 /* 植物信息区 */
 .plant-info {
     padding: 15px;
@@ -652,12 +699,13 @@ watch(() => props.plant.id, () => {
 }
 
 .plant-description {
-color: var(--text-primary);
+    color: var(--text-primary);
     font-size: 0.9rem;
     color: var(--text-secondary);
     margin-bottom: 15px;
     line-height: 1.4;
-    max-height: 5.6em; /* 大约4行文本 */
+    max-height: 5.6em;
+    /* 大约4行文本 */
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 4;
@@ -774,20 +822,22 @@ color: var(--text-primary);
         background-color: rgba(144, 147, 153, 0.2) !important;
     }
 
-    /* 添加养护操作按钮区域的夜间模式样式 */
+    .harvest-button {
+        background-color: rgba(255, 193, 7, 0.2) !important;
+        border-color: #ffc107 !important;
+    }
+
     .care-actions {
         background-color: rgba(40, 40, 40, 0.9) !important;
         border-top: 1px solid #333333;
     }
 
-    /* 确保植物图像在深色背景上有足够对比度 */
     .plant-visual {
         background-color: rgba(0, 0, 0, 0.2);
         border-radius: 8px;
         padding: 5px;
     }
 
-    /* 确保领养按钮在深色模式下可见 */
     .adopt-button {
         background-color: var(--primary-color) !important;
         color: white !important;
@@ -795,6 +845,11 @@ color: var(--text-primary);
 
     .plant-description {
         color: var(--text-secondary) !important;
+    }
+
+    .harvest-reminder {
+        background-color: rgba(255, 193, 7, 0.7);
+        color: #fff;
     }
 }
 
@@ -875,6 +930,42 @@ color: var(--text-primary);
     background-size: contain;
     animation: pruning 1.5s ease-in-out;
     opacity: 0;
+}
+
+/* 收获动画 */
+.harvest-animation {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 100px;
+    background: url('/images/effects/harvest-effect.png') no-repeat center;
+    background-size: contain;
+    animation: harvestEffect 2s ease-in-out;
+    opacity: 0;
+}
+
+@keyframes harvestEffect {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.5);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.2);
+    }
+
+    70% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) scale(1.1);
+    }
 }
 
 /* 动画关键帧 */
@@ -979,6 +1070,23 @@ color: var(--text-primary);
     100% {
         opacity: 0;
         transform: translateX(-50%) rotate(0);
+    }
+}
+
+@keyframes harvestGlow {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1);
     }
 }
 

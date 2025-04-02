@@ -22,6 +22,7 @@
                         <div v-show="showWaterEffect" class="water-effect"></div>
                         <div v-show="showFertilizeEffect" class="fertilize-effect"></div>
                         <div v-show="showPruneEffect" class="prune-effect"></div>
+                        <div v-show="showHarvestEffect" class="harvest-effect"></div>
                         <!-- <div v-show="showSoilEffect" class="soil-effect"></div> -->
                     </div>
 
@@ -46,20 +47,22 @@
                         <span class="action-name">修剪</span>
                     </button>
 
-                    <!-- <button class="care-action-btn soil-btn" @click="performCareAction('翻土')">
-                        <span class="action-icon">🌱</span>
-                        <span class="action-name">翻土</span>
+                    <!-- 添加收获按钮，仅在结果期显示 -->
+                    <button v-if="plantStatus.growthStage === 'fruit' && !plantStatus.isWithered"
+                        class="care-action-btn harvest-btn" @click="performCareAction('收获')">
+                        <span class="action-icon">🍎</span>
+                        <span class="action-name">收获</span>
                     </button>
-
-                    <button class="care-action-btn pest-btn" @click="performCareAction('病虫防治')">
-                        <span class="action-icon">🐛</span>
-                        <span class="action-name">病虫防治</span>
-                    </button> -->
                 </div>
 
                 <!-- 操作反馈提示 -->
                 <div v-if="actionFeedback" class="action-feedback" :class="actionFeedback.type">
                     {{ actionFeedback.message }}
+                </div>
+
+                <!-- 添加收获提示消息 -->
+                <div v-if="plantStatus.growthStage === 'fruit' && !plantStatus.isWithered" class="harvest-alert">
+                    果实已成熟，请及时收获！
                 </div>
             </div>
 
@@ -246,6 +249,7 @@ const isGrowing = ref(false);
 const showWaterEffect = ref(false);
 const showFertilizeEffect = ref(false);
 const showPruneEffect = ref(false);
+const showHarvestEffect = ref(false);
 // const showSoilEffect = ref(false);
 const actionFeedback = ref(null);
 const plantStatus = ref({
@@ -305,19 +309,21 @@ const performCareAction = async (actionType) => {
             notes: '' // 简单操作不需要备注
         });
 
-        // 显示成功反馈
-        actionFeedback.value = {
-            type: 'success',
-            message: `成功${actionType}！植物看起来更健康了。`
-        };
+        // 特殊处理收获操作
+        if (actionType === '收获') {
+            const response = await axios.post(`/api/plants/${plantId}/harvest`);
+            if (response.data.isCompleted) {
+                actionFeedback.value = {
+                    type: 'success',
+                    message: '恭喜！您已成功收获并完成了这株植物的培育！'
+                };
+            }
+        } else {
+            // 其他养护操作的逻辑...
+        }
 
-        // 更新养护记录
+        // 添加养护记录和刷新操作
         await loadCareRecords();
-
-        // 触发植物生长动画
-        triggerGrowthAnimation();
-
-        // 添加状态刷新
         await loadPlantGrowthStatus();
 
     } catch (error) {
@@ -351,6 +357,10 @@ const showActionEffect = (actionType) => {
             showPruneEffect.value = true;
             setTimeout(() => { showPruneEffect.value = false; }, 2000);
             break;
+        case '收获':
+            showHarvestEffect.value = true;
+            setTimeout(() => { showHarvestEffect.value = false; }, 2000);
+            break;
         // case '翻土':
         //     showSoilEffect.value = true;
         //     setTimeout(() => { showSoilEffect.value = false; }, 2000);
@@ -369,7 +379,8 @@ const getActionTagType = (actionType) => {
     const typeMap = {
         '浇水': 'primary',
         '施肥': 'success',
-        '修剪': 'warning'
+        '修剪': 'warning',
+        '收获': 'success'
         // '翻土': 'info',
         // '病虫防治': 'danger'
     };
@@ -796,6 +807,11 @@ onUnmounted(() => {
     border-color: #ff9800;
 }
 
+.harvest-btn {
+    background-color: #fff8e1;
+    border-color: #ffc107;
+}
+
 /* 翻土和病虫防治按钮样式 */
 /* .soil-btn {
     background-color: #f5f5f5;
@@ -844,6 +860,18 @@ onUnmounted(() => {
     pointer-events: none;
 }
 
+.harvest-effect {
+    position: absolute;
+    top: 30%;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    background: url('/images/effects/harvest-effect.gif') no-repeat center;
+    background-size: contain;
+    z-index: 2;
+    pointer-events: none;
+}
+
 .soil-effect {
     position: absolute;
     bottom: 0;
@@ -880,6 +908,20 @@ onUnmounted(() => {
     background-color: rgba(244, 67, 54, 0.2);
     border: 1px solid #f44336;
     color: #c62828;
+}
+
+.harvest-alert {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ffd54f;
+    color: #7d5700;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-weight: 500;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    animation: pulse 2s infinite;
 }
 
 @keyframes fadeInOut {
@@ -1174,6 +1216,16 @@ onUnmounted(() => {
     .prune-btn {
         background-color: rgba(255, 152, 0, 0.2) !important;
         border-color: #ff9800 !important;
+    }
+
+    .harvest-btn {
+        background-color: rgba(255, 193, 7, 0.2) !important;
+        border-color: #ffc107 !important;
+    }
+
+    .harvest-alert {
+        background-color: rgba(255, 193, 7, 0.7);
+        color: #fff;
     }
 
     /* 悬停效果增强 */
