@@ -3,11 +3,11 @@ import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Dashboard from '../views/Dashboard.vue'
-import Plants from '../views/Plants.vue'
 import PlantDetail from '../views/PlantDetail.vue'
 import CareRecords from '../views/CareRecords.vue'
 import NotAuthorized from '../views/NotAuthorized.vue'  // 添加未授权页面
 import MyGarden from '../views/MyGarden.vue'
+import { useUserStore } from '../store/user' // 正确的用户存储路径
 
 const routes = [
     {
@@ -35,9 +35,8 @@ const routes = [
     },
     {
         path: '/plants',
-        name: 'Plants',
-        component: Plants,
-        meta: { requiresAuth: true } // 添加权限控制
+        component: () => import('../views/Plants.vue'),
+        meta: { requiresAuth: true }
     },
     {
         path: '/plant/:id',
@@ -79,22 +78,18 @@ const router = createRouter({
     routes
 })
 
-// 增强的路由守卫
+// 修改路由守卫部分，避免循环引用问题
 router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem('token')
-    const isAuthenticated = !!token
+    const userStore = useUserStore();
 
     // 需要登录但未登录 - 重定向到登录页
-    if (to.meta.requiresAuth && !isAuthenticated) {
-        next({
-            path: '/login',
-            query: { redirect: to.fullPath } // 保存原目标路径
-        })
-        return
+    if (to.meta.requiresAuth && !userStore.isAuthenticated) {
+        next('/login');
+        return;
     }
 
     // 只允许未登录用户访问的页面，但用户已登录 - 重定向到首页
-    if (to.meta.guestOnly && isAuthenticated) {
+    if (to.meta.guestOnly && userStore.isAuthenticated) {
         next('/dashboard')
         return
     }

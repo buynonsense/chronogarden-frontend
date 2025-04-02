@@ -8,19 +8,22 @@
                 <span v-else>✕</span>
             </div>
 
-            <!-- 桌面端菜单 -->
+            <!-- 桌面端菜单修改 -->
             <el-menu :default-active="activeIndex" mode="horizontal" router background-color="#57bc90" text-color="#fff"
                 active-text-color="#fffde7" class="nav-menu desktop-menu">
                 <el-menu-item index="/">首页 🏠</el-menu-item>
-                <!-- <el-menu-item index="/eras">时间节点 🕰️</el-menu-item> -->
-                <el-menu-item index="/plants">植物图鉴 🌱</el-menu-item>
-                <el-menu-item index="/my-garden" v-if="isLoggedIn">
-                    <span>我的花园 🌿</span>
-                </el-menu-item>
+
+                <!-- 将植物图鉴放入登录后可见的部分 -->
+                <template v-if="isLoggedIn">
+                    <el-menu-item index="/plants">植物图鉴 🌱</el-menu-item>
+                    <el-menu-item index="/my-garden">我的花园 🌿</el-menu-item>
+                    <el-menu-item index="/care-records">养护记录 📝</el-menu-item>
+                </template>
+
                 <div class="flex-spacer"></div>
+
                 <template v-if="isLoggedIn">
                     <el-menu-item index="/dashboard">个人仪表盘 📊</el-menu-item>
-                    <el-menu-item index="/care-records">养护记录 📝</el-menu-item>
                     <el-menu-item @click="logout">退出登录 👋</el-menu-item>
                 </template>
                 <template v-else>
@@ -29,15 +32,16 @@
                 </template>
             </el-menu>
 
-            <!-- 移动端菜单 -->
+            <!-- 移动端菜单修改 -->
             <transition name="slide">
                 <div class="mobile-menu" v-if="mobileMenuOpen">
                     <router-link to="/" class="mobile-menu-item" @click="closeMobileMenu">首页 🏠</router-link>
-                    <!-- <router-link to="/eras" class="mobile-menu-item" @click="closeMobileMenu">时间节点 🕰️</router-link> -->
-                    <router-link to="/plants" class="mobile-menu-item" @click="closeMobileMenu">植物图鉴 🌱</router-link>
-                    <router-link to="/my-garden" class="mobile-menu-item" v-if="isLoggedIn"
-                        @click="closeMobileMenu">我的花园</router-link>
+                    <!-- 将植物图鉴放入登录后可见的部分 -->
                     <template v-if="isLoggedIn">
+                        <router-link to="/plants" class="mobile-menu-item" @click="closeMobileMenu">植物图鉴
+                            🌱</router-link>
+                        <router-link to="/my-garden" class="mobile-menu-item" @click="closeMobileMenu">我的花园
+                            🌿</router-link>
                         <router-link to="/dashboard" class="mobile-menu-item" @click="closeMobileMenu">个人仪表盘
                             📊</router-link>
                         <router-link to="/care-records" class="mobile-menu-item" @click="closeMobileMenu">养护记录

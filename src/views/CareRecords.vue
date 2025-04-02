@@ -6,22 +6,20 @@
         <el-card class="filter-card">
             <el-form :inline="true" :model="filters">
                 <el-form-item label="植物">
-                    <el-select v-model="filters.plantId" placeholder="选择植物" clearable @change="loadRecords">
-                        <el-option v-for="plant in plants" :key="plant.id" :label="plant.name"
+                    <el-select v-model="filters.plantId" placeholder="选择植物" clearable @change="loadRecords" filterable
+                        :loading="plantSearchLoading" @input="filterPlantOptions">
+                        <el-option v-for="plant in displayPlants" :key="plant.id" :label="plant.name"
                             :value="plant.id"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item label="操作类型">
                     <el-select v-model="filters.actionType" placeholder="选择操作类型" clearable @change="filterRecords">
-                        <el-option label="浇水" value="浇水"></el-option>
-                        <el-option label="施肥" value="施肥"></el-option>
-                        <el-option label="修剪" value="修剪"></el-option>
-                        <el-option label="翻土" value="翻土"></el-option>
-                        <el-option label="病虫防治" value="病虫防治"></el-option>
+                        <el-option v-for="type in actionTypes" :key="type" :label="type" :value="type"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item>
                     <el-button type="primary" @click="loadRecords">查询</el-button>
+                    <el-button @click="resetFilters">重置</el-button>
                 </el-form-item>
             </el-form>
         </el-card>
@@ -96,6 +94,9 @@ import { getPlants } from '../api/plants';
 const router = useRouter();
 const careRecords = ref([]);
 const plants = ref([]);
+const displayPlants = ref([]);
+const plantSearchLoading = ref(false);
+const plantSearchQuery = ref('');
 const loading = ref(true);
 const filters = ref({
     plantId: '',
@@ -182,12 +183,38 @@ const loadRecords = async () => {
 
 // 加载植物列表
 const loadPlants = async () => {
+    plantSearchLoading.value = true;
     try {
         const response = await getPlants();
         plants.value = response.data;
+        displayPlants.value = response.data; // 初始化显示全部植物
     } catch (error) {
         console.error('获取植物列表失败:', error);
+        ElMessage.error('获取植物列表失败');
+    } finally {
+        plantSearchLoading.value = false;
     }
+};
+
+// 过滤植物选项
+const filterPlantOptions = (query) => {
+    if (query) {
+        plantSearchQuery.value = query;
+        displayPlants.value = plants.value.filter(plant =>
+            plant.name.toLowerCase().includes(query.toLowerCase()));
+    } else {
+        displayPlants.value = plants.value;
+    }
+};
+
+// 重置筛选
+const resetFilters = () => {
+    filters.value = {
+        plantId: '',
+        actionType: ''
+    };
+    displayPlants.value = plants.value;
+    loadRecords();
 };
 
 // 过滤记录
@@ -220,6 +247,17 @@ const deleteRecord = async (recordId) => {
         }
     }
 };
+
+// 添加实际操作类型的计算属性
+const actionTypes = computed(() => {
+    const types = new Set();
+    careRecords.value.forEach(record => {
+        if (record.actionType) {
+            types.add(record.actionType);
+        }
+    });
+    return Array.from(types);
+});
 
 onMounted(() => {
     loadRecords();
@@ -280,5 +318,25 @@ onMounted(() => {
 .stat-label {
     margin-top: 5px;
     color: #666;
+}
+
+/* 在 <style> 部分添加 */
+.empty-text {
+    padding: 8px 12px;
+    text-align: center;
+    color: #909399;
+    font-size: 14px;
+}
+
+/* 确保下拉菜单有足够的宽度 */
+:deep(.el-select) {
+    width: 200px;
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+    .empty-text {
+        color: #a0a0a0;
+    }
 }
 </style>
