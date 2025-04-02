@@ -291,4 +291,44 @@ onMounted(() => {
         border: 1px solid #333333;
     }
 }
+
+/* 添加在已有样式的末尾 */
+
+/* 处理时代周期标签在移动端的换行 */
+:deep(.el-tag) {
+    white-space: normal !important;
+    /* 允许文本换行 */
+    max-width: 100%;
+    /* 限制最大宽度 */
+    height: auto;
+    /* 高度自适应内容 */
+    line-height: 1.5;
+    /* 增加行高 */
+    padding: 4px 8px;
+    /* 调整内边距 */
+    margin-bottom: 5px;
+    /* 增加底部间距 */
+    word-wrap: break-word;
+    /* 允许单词内换行 */
+    text-align: center;
+    /* 文本居中 */
+}
+
+/* 在小屏幕上增加特殊处理 */
+@media (max-width: 768px) {
+    :deep(.el-tag) {
+        display: inline-block;
+        margin-top: 5px;
+        font-size: 12px;
+    }
+
+    .era-info-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .era-info-header h4 {
+        margin-bottom: 8px;
+    }
+}
 </style>

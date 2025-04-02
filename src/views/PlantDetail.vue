@@ -20,6 +20,7 @@
 
                         <!-- 交互效果动画元素 -->
                         <div v-show="showWaterEffect" class="water-effect"></div>
+                        <div v-show="showLightEffect" class="light-effect"></div> <!-- 新增光照效果 -->
                         <div v-show="showFertilizeEffect" class="fertilize-effect"></div>
                         <div v-show="showPruneEffect" class="prune-effect"></div>
                         <div v-show="showHarvestEffect" class="harvest-effect"></div>
@@ -32,24 +33,30 @@
 
                 <!-- 养护操作按钮环绕显示 -->
                 <div class="care-actions-circle">
-                    <button class="care-action-btn water-btn" @click="performCareAction('浇水')">
+                    <button class="care-action-btn water-btn" @click="performCareAction('浇水')" :disabled="isOnCooldown">
                         <span class="action-icon">💧</span>
                         <span class="action-name">浇水</span>
                     </button>
 
-                    <button class="care-action-btn fertilize-btn" @click="performCareAction('施肥')">
+                    <button class="care-action-btn light-btn" @click="performCareAction('阳光')" :disabled="isOnCooldown">
+                        <span class="action-icon">☀️</span>
+                        <span class="action-name">阳光</span>
+                    </button>
+
+                    <button class="care-action-btn fertilize-btn" @click="performCareAction('施肥')"
+                        :disabled="isOnCooldown">
                         <span class="action-icon">🌱</span>
                         <span class="action-name">施肥</span>
                     </button>
 
-                    <button class="care-action-btn prune-btn" @click="performCareAction('修剪')">
+                    <button class="care-action-btn prune-btn" @click="performCareAction('修剪')" :disabled="isOnCooldown">
                         <span class="action-icon">✂️</span>
                         <span class="action-name">修剪</span>
                     </button>
 
                     <!-- 添加收获按钮，仅在结果期显示 -->
                     <button v-if="plantStatus.growthStage === 'fruit' && !plantStatus.isWithered"
-                        class="care-action-btn harvest-btn" @click="performCareAction('收获')">
+                        class="care-action-btn harvest-btn" @click="performCareAction('收获')" :disabled="isOnCooldown">
                         <span class="action-icon">🍎</span>
                         <span class="action-name">收获</span>
                     </button>
@@ -239,7 +246,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue';
 import { getPlantById } from '../api/plants';
 import { getUserPlantCareRecords, addCareRecord as apiAddCareRecord, deleteCareRecord } from '../api/careRecords';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
 import axios from 'axios';
 
 const route = useRoute();
@@ -250,6 +257,7 @@ const loading = ref(true);
 const careRecords = ref([]);
 const isGrowing = ref(false);
 const showWaterEffect = ref(false);
+const showLightEffect = ref(false); // 新增光照效果状态
 const showFertilizeEffect = ref(false);
 const showPruneEffect = ref(false);
 const showHarvestEffect = ref(false);
@@ -268,6 +276,7 @@ const plantStatus = ref({
 });
 const statusPollingInterval = ref(null);
 const isDevelopmentMode = ref(process.env.NODE_ENV === 'development');
+const isOnCooldown = ref(false);
 
 // 格式化养护指南，将换行符转换为HTML
 const formattedCareGuide = computed(() => {
@@ -301,8 +310,24 @@ const getPlantAnimationSrc = () => {
 
 // 执行养护操作
 const performCareAction = async (actionType) => {
+    // 如果在冷却中，直接返回
+    if (isOnCooldown.value) return;
+
+    // 设置冷却状态
+    isOnCooldown.value = true;
+
+    // 显示加载提示
+    const loading = ElLoading.service({
+        lock: true,
+        text: `${actionType}中...`,
+        background: 'rgba(0, 0, 0, 0.6)'
+    });
+
     // 显示相应的动画效果
     showActionEffect(actionType);
+
+    // 延时3秒模拟操作过程
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     try {
         // 调用API记录养护操作
@@ -343,6 +368,7 @@ const performCareAction = async (actionType) => {
         await loadCareRecords();
         await loadPlantGrowthStatus();
 
+        ElMessage.success(`${actionType}成功！`);
     } catch (error) {
         console.error('养护操作失败:', error);
 
@@ -351,6 +377,12 @@ const performCareAction = async (actionType) => {
             type: 'error',
             message: `${actionType}失败，请稍后再试。`
         };
+    } finally {
+        // 关闭加载提示
+        loading.close();
+
+        // 冷却结束后重置状态
+        isOnCooldown.value = false;
     }
 
     // 3秒后清除反馈信息
@@ -365,6 +397,10 @@ const showActionEffect = (actionType) => {
         case '浇水':
             showWaterEffect.value = true;
             setTimeout(() => { showWaterEffect.value = false; }, 2000);
+            break;
+        case '阳光': // 新增光照效果逻辑
+            showLightEffect.value = true;
+            setTimeout(() => { showLightEffect.value = false; }, 2000);
             break;
         case '施肥':
             showFertilizeEffect.value = true;
@@ -395,6 +431,7 @@ const triggerGrowthAnimation = () => {
 const getActionTagType = (actionType) => {
     const typeMap = {
         '浇水': 'primary',
+        '阳光': 'info', // 新增光照标签类型
         '施肥': 'success',
         '修剪': 'warning',
         '收获': 'success'
@@ -497,6 +534,19 @@ const loadPlantGrowthStatus = async () => {
 const applyDecay = async (decayType) => {
     if (!isDevelopmentMode.value) return;
 
+    // 如果在冷却中，直接返回
+    if (isOnCooldown.value) return;
+
+    // 设置冷却状态
+    isOnCooldown.value = true;
+
+    // 显示加载提示
+    const loading = ElLoading.service({
+        lock: true,
+        text: `应用${getDecayTypeText(decayType)}中...`,
+        background: 'rgba(0, 0, 0, 0.6)'
+    });
+
     try {
         await axios.post(`/api/plants/${plantId}/apply-decay?decayType=${decayType}`);
         ElMessage.success(`已应用${getDecayTypeText(decayType)}！`);
@@ -504,12 +554,31 @@ const applyDecay = async (decayType) => {
     } catch (error) {
         console.error('执行衰减失败:', error);
         ElMessage.error('执行衰减失败，请稍后再试');
+    } finally {
+        // 关闭加载提示
+        loading.close();
+
+        // 冷却结束后重置状态
+        isOnCooldown.value = false;
     }
 };
 
 // 时间快进（仅开发模式）
 const advanceTime = async (hours) => {
     if (!isDevelopmentMode.value) return;
+
+    // 如果在冷却中，直接返回
+    if (isOnCooldown.value) return;
+
+    // 设置冷却状态
+    isOnCooldown.value = true;
+
+    // 显示加载提示
+    const loading = ElLoading.service({
+        lock: true,
+        text: `时间快进${hours}小时中...`,
+        background: 'rgba(0, 0, 0, 0.6)'
+    });
 
     try {
         await axios.post(`/api/plants/${plantId}/advance-time?hours=${hours}`);
@@ -519,6 +588,12 @@ const advanceTime = async (hours) => {
     } catch (error) {
         console.error('时间快进失败:', error);
         ElMessage.error('时间快进失败，请稍后再试');
+    } finally {
+        // 关闭加载提示
+        loading.close();
+
+        // 冷却结束后重置状态
+        isOnCooldown.value = false;
     }
 };
 
@@ -787,6 +862,11 @@ onUnmounted(() => {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+.care-action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 .care-action-btn:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
@@ -823,6 +903,12 @@ onUnmounted(() => {
     border-color: #ffc107;
 }
 
+/* 阳光按钮样式 */
+.light-btn {
+    background-color: #fff8e1;
+    border-color: #ffb300;
+}
+
 /* 翻土和病虫防治按钮样式 */
 /* .soil-btn {
     background-color: #f5f5f5;
@@ -835,64 +921,292 @@ onUnmounted(() => {
 } */
 
 /* 操作效果动画 */
+
+/* 浇水效果动画 */
 .water-effect {
+    position: absolute;
+    top: 10%;
+    left: 0;
+    width: 100%;
+    height: 80%;
+    z-index: 2;
+    pointer-events: none;
+    animation: waterDrops 2s ease-in-out;
+}
+
+.water-effect::before {
+    content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: url('/images/effects/water-effect.gif') no-repeat center;
-    background-size: contain;
+    background: linear-gradient(to bottom, rgba(30, 144, 255, 0.5) 0%, rgba(30, 144, 255, 0) 100%);
+    animation: waterFlow 2s ease-in-out;
+}
+
+/* 光照效果样式 - 让它与PlantCard.vue中的一致 */
+.light-effect {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     z-index: 2;
     pointer-events: none;
 }
 
+.light-effect::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(255, 235, 59, 0.7) 0%, rgba(255, 235, 59, 0) 70%);
+    animation: sunlight 3s ease-in-out;
+}
+
+.light-effect::after {
+    content: '☀️';
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 24px;
+    animation: sunRotate 2s ease-in-out;
+}
+
+@keyframes sunRotate {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) rotate(0deg);
+    }
+
+    30% {
+        opacity: 1;
+        transform: scale(1.2) rotate(180deg);
+    }
+
+    70% {
+        opacity: 1;
+        transform: scale(1) rotate(360deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.5) rotate(540deg);
+    }
+}
+
+/* 施肥效果动画 */
 .fertilize-effect {
     position: absolute;
     bottom: 0;
     left: 0;
     width: 100%;
     height: 50%;
-    background: url('/images/effects/fertilize-effect.gif') no-repeat center;
-    background-size: contain;
     z-index: 2;
     pointer-events: none;
+    animation: fertilizeGrow 2s ease-in-out;
 }
 
+.fertilize-effect::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    height: 20px;
+    background-color: rgba(76, 175, 80, 0.4);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    animation: fertilizerSpread 2s ease-in-out;
+}
+
+/* 修剪效果动画 */
 .prune-effect {
     position: absolute;
     top: 20%;
     left: 0;
     width: 100%;
     height: 60%;
-    background: url('/images/effects/prune-effect.gif') no-repeat center;
-    background-size: contain;
     z-index: 2;
     pointer-events: none;
+    overflow: visible;
 }
 
+.prune-effect::before,
+.prune-effect::after {
+    content: '✂️';
+    position: absolute;
+    font-size: 24px;
+    animation: pruneSnip 2s ease-in-out;
+}
+
+.prune-effect::before {
+    top: 30%;
+    left: 20%;
+    animation-delay: 0.3s;
+}
+
+.prune-effect::after {
+    top: 50%;
+    right: 20%;
+    animation-delay: 0.8s;
+}
+
+/* 收获效果动画 */
 .harvest-effect {
     position: absolute;
     top: 30%;
     left: 0;
     width: 100%;
     height: 60%;
-    background: url('/images/effects/harvest-effect.gif') no-repeat center;
-    background-size: contain;
     z-index: 2;
     pointer-events: none;
 }
 
-.soil-effect {
+.harvest-effect::before {
+    content: '🍎';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 40%;
-    background: url('/images/effects/soil-effect.gif') no-repeat center;
-    background-size: contain;
-    z-index: 2;
-    pointer-events: none;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 40px;
+    animation: harvestPop 2s ease-in-out;
+}
+
+/* 动画定义 */
+@keyframes waterDrops {
+    0% {
+        opacity: 0;
+    }
+
+    30% {
+        opacity: 1;
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes waterFlow {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.8);
+    }
+
+    30% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    70% {
+        opacity: 0.8;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(20px) scale(1.1);
+    }
+}
+
+@keyframes fertilizeGrow {
+    0% {
+        opacity: 0;
+    }
+
+    30% {
+        opacity: 1;
+    }
+
+    70% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes fertilizerSpread {
+    0% {
+        transform: scaleX(0.2);
+        opacity: 0;
+    }
+
+    40% {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scaleX(1.1);
+        opacity: 0;
+    }
+}
+
+@keyframes pruneSnip {
+    0% {
+        transform: scale(0.5) rotate(-30deg);
+        opacity: 0;
+    }
+
+    20% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+
+    40% {
+        transform: scale(1) rotate(15deg);
+    }
+
+    60% {
+        transform: scale(1) rotate(0deg);
+    }
+
+    80% {
+        transform: scale(1) rotate(-15deg);
+    }
+
+    100% {
+        transform: scale(0.5) rotate(0deg);
+        opacity: 0;
+    }
+}
+
+@keyframes harvestPop {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+
+    20% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+    }
+
+    40% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    60% {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    80% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -150%) scale(0.8);
+        opacity: 0;
+    }
 }
 
 /* 操作反馈提示 */
@@ -1247,6 +1561,11 @@ onUnmounted(() => {
     .harvest-btn {
         background-color: rgba(255, 193, 7, 0.2) !important;
         border-color: #ffc107 !important;
+    }
+
+    .light-btn {
+        background-color: rgba(255, 179, 0, 0.2) !important;
+        border-color: #ffb300 !important;
     }
 
     .harvest-alert {

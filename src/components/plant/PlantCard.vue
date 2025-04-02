@@ -33,29 +33,33 @@
 
             <!-- 养护操作按钮区域 - 仅在我的花园中显示 -->
             <div class="care-actions" v-if="showCareActions">
-                <button class="care-button water-button" @click="performCare('浇水')" :disabled="isWithered">
+                <button class="care-button water-button" @click="performCare('浇水')"
+                    :disabled="isWithered || isOnCooldown">
                     <span class="button-icon">💧</span>
                     <span class="button-text">浇水</span>
                 </button>
 
-                <button class="care-button light-button" @click="performCare('调整光照')" :disabled="isWithered">
+                <button class="care-button light-button" @click="performCare('阳光')"
+                    :disabled="isWithered || isOnCooldown">
                     <span class="button-icon">☀️</span>
-                    <span class="button-text">调光</span>
+                    <span class="button-text">阳光</span>
                 </button>
 
-                <button class="care-button fertilize-button" @click="performCare('施肥')" :disabled="isWithered">
+                <button class="care-button fertilize-button" @click="performCare('施肥')"
+                    :disabled="isWithered || isOnCooldown">
                     <span class="button-icon">🌱</span>
                     <span class="button-text">施肥</span>
                 </button>
 
-                <button class="care-button prune-button" @click="performCare('修剪')" :disabled="isWithered">
+                <button class="care-button prune-button" @click="performCare('修剪')"
+                    :disabled="isWithered || isOnCooldown">
                     <span class="button-icon">✂️</span>
                     <span class="button-text">修剪</span>
                 </button>
 
                 <!-- 添加收获按钮 -->
                 <button v-if="growthStage === 'fruit' && !isWithered" class="care-button harvest-button"
-                    @click="performCare('收获')">
+                    @click="performCare('收获')" :disabled="isOnCooldown">
                     <span class="button-icon">🍎</span>
                     <span class="button-text">收获</span>
                 </button>
@@ -138,7 +142,8 @@
                 <!-- 植物图鉴模式下的操作按钮 -->
                 <div v-if="!showCareActions" class="catalog-actions">
                     <!-- 未领养状态显示领养按钮 -->
-                    <el-button v-if="!isAdopted" type="primary" @click="adoptPlant" class="adopt-button">
+                    <el-button v-if="!isAdopted" type="primary" @click="adoptPlant" class="adopt-button"
+                        :disabled="isOnCooldown">
                         领养植物
                     </el-button>
 
@@ -185,7 +190,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { addCareRecord } from '../../api/careRecords';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElLoading } from 'element-plus';
 import axios from 'axios';
 
 const props = defineProps({
@@ -217,6 +222,7 @@ const growthStarted = ref(!!props.plant.growthStartTime);
 const showAnimation = ref(false);
 const animationClass = ref('');
 const isCompleted = ref(false);
+const isOnCooldown = ref(false); // 冷却状态变量
 
 // 判断用户是否已领养此植物
 const isAdopted = ref(false);
@@ -384,48 +390,61 @@ const getPlantImage = () => {
 
 // 执行养护操作
 const performCare = async (actionType) => {
-    if (isWithered.value) return;
+    if (isWithered.value || isOnCooldown.value) return;
+
+    // 设置冷却状态
+    isOnCooldown.value = true;
+
+    // 显示加载提示
+    const loading = ElLoading.service({
+        lock: true,
+        text: `${actionType}中...`,
+        background: 'rgba(0, 0, 0, 0.6)'
+    });
 
     // 显示动画效果
     showAnimation.value = true;
 
-    // 根据操作类型设置不同动画并更新植物状态
-    switch (actionType) {
-        case '浇水':
-            animationClass.value = 'water-animation';
-            waterLevel.value = Math.min(100, waterLevel.value + 60);
-            break;
-
-        case '调整光照':
-            animationClass.value = 'light-animation';
-            lightLevel.value = Math.min(100, lightLevel.value + 60);
-            break;
-
-        case '施肥':
-            animationClass.value = 'fertilize-animation';
-            nutrientLevel.value = Math.min(100, nutrientLevel.value + 60);
-            break;
-
-        case '修剪':
-            animationClass.value = 'prune-animation';
-            // 修剪可能影响所有生长参数
-            waterLevel.value = Math.min(100, waterLevel.value + 15);
-            lightLevel.value = Math.min(100, lightLevel.value + 25);
-            nutrientLevel.value = Math.min(100, nutrientLevel.value + 20);
-            break;
-
-        case '收获':
-            animationClass.value = 'harvest-animation';
-            // 收获不需要更新水分等属性，因为这是完成操作
-            break;
-    }
-
-    // 添加延时，让动画有时间显示
-    setTimeout(() => {
-        showAnimation.value = false;
-    }, 2000);
+    // 延时3秒模拟操作过程
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     try {
+        // 根据操作类型设置不同动画并更新植物状态
+        switch (actionType) {
+            case '浇水':
+                animationClass.value = 'water-animation';
+                waterLevel.value = Math.min(100, waterLevel.value + 60);
+                break;
+
+            case '阳光':
+                animationClass.value = 'light-animation';
+                lightLevel.value = Math.min(100, lightLevel.value + 60);
+                break;
+
+            case '施肥':
+                animationClass.value = 'fertilize-animation';
+                nutrientLevel.value = Math.min(100, nutrientLevel.value + 60);
+                break;
+
+            case '修剪':
+                animationClass.value = 'prune-animation';
+                // 修剪可能影响所有生长参数
+                waterLevel.value = Math.min(100, waterLevel.value + 15);
+                lightLevel.value = Math.min(100, lightLevel.value + 25);
+                nutrientLevel.value = Math.min(100, nutrientLevel.value + 20);
+                break;
+
+            case '收获':
+                animationClass.value = 'harvest-animation';
+                // 收获不需要更新水分等属性，因为这是完成操作
+                break;
+        }
+
+        // 添加延时，让动画有时间显示
+        setTimeout(() => {
+            showAnimation.value = false;
+        }, 2000);
+
         // 调用API记录养护操作
         await addCareRecord({
             plant: { id: props.plant.id },
@@ -447,42 +466,37 @@ const performCare = async (actionType) => {
 
         // 重新加载植物状态
         await loadPlantGrowthStatus();
+
+        ElMessage.success(`${actionType}成功！`);
     } catch (error) {
         console.error(`${actionType}失败:`, error);
         ElMessage.error(`${actionType}失败，请稍后再试`);
+    } finally {
+        // 关闭加载提示
+        loading.close();
+
+        // 冷却结束后重置状态
+        isOnCooldown.value = false;
     }
-};
-
-// 开始植物养护
-const startGrowth = async () => {
-    try {
-        await axios.post(`/api/plants/${props.plant.id}/start-growth`);
-
-        // 记录养护记录
-        await addCareRecord({
-            plant: { id: props.plant.id },
-            actionType: isWithered.value ? '重新养护' : '开始养护',
-            notes: '开始植物生长周期'
-        });
-
-        // 重新加载植物状态
-        await loadPlantGrowthStatus();
-
-        ElMessage.success(isWithered.value ? '植物重新养护成功!' : '开始养护植物!');
-
-    } catch (error) {
-        console.error('开始养护失败:', error);
-        ElMessage.error('开始养护失败，请稍后再试');
-    }
-};
-
-// 查看详情
-const viewDetails = () => {
-    router.push(`/plant/${props.plant.id}`);
 };
 
 // 新增：领养植物方法
 const adoptPlant = async () => {
+    if (isOnCooldown.value) return;
+
+    // 设置冷却状态
+    isOnCooldown.value = true;
+
+    // 显示加载提示
+    const loading = ElLoading.service({
+        lock: true,
+        text: '领养植物中...',
+        background: 'rgba(0, 0, 0, 0.6)'
+    });
+
+    // 延时3秒模拟操作过程
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
     try {
         await axios.post(`/api/plants/${props.plant.id}/adopt`);
 
@@ -501,12 +515,15 @@ const adoptPlant = async () => {
         await loadPlantGrowthStatus();
 
         ElMessage.success('成功领养植物！请前往"我的花园"照料它');
-
-        // 可选：跳转到我的花园
-        // router.push('/my-garden');
     } catch (error) {
         console.error('领养植物失败:', error);
         ElMessage.error('领养植物失败，请稍后再试');
+    } finally {
+        // 关闭加载提示
+        loading.close();
+
+        // 冷却结束后重置状态
+        isOnCooldown.value = false;
     }
 };
 
@@ -519,6 +536,11 @@ const truncateDescription = (description) => {
 // 新增：跳转到我的花园方法
 const goToMyGarden = () => {
     router.push('/my-garden');
+};
+
+// 查看植物详情
+const viewDetails = () => {
+    router.push(`/plant/${props.plant.id}`);
 };
 
 onMounted(() => {
@@ -690,6 +712,9 @@ watch(() => props.plant.id, () => {
 .care-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    filter: grayscale(0.8);
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 .button-icon {
@@ -971,15 +996,34 @@ watch(() => props.plant.id, () => {
 
 .water-animation {
     position: absolute;
-    top: 20px;
+    top: 10%;
+    left: 0;
+    width: 100%;
+    height: 70%;
+    animation: waterDropAnim 2s ease-out;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.water-animation::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(33, 150, 243, 0.4) 0%, rgba(33, 150, 243, 0) 100%);
+    animation: waterFlowAnim 2s ease-out;
+}
+
+.water-animation::after {
+    content: '💧';
+    position: absolute;
+    top: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 100px;
-    height: 100px;
-    background: url('/images/effects/water-effect.png') no-repeat center;
-    background-size: contain;
-    animation: waterDrop 2s ease-in;
-    opacity: 0;
+    font-size: 24px;
+    animation: dropFallAnim 1.5s ease-in;
 }
 
 .light-animation {
@@ -987,102 +1031,161 @@ watch(() => props.plant.id, () => {
     top: 0;
     left: 0;
     width: 100%;
-    height: 160px;
-    background: radial-gradient(ellipse at center, rgba(255, 247, 130, 0.8) 0%, rgba(255, 247, 130, 0) 70%);
-    animation: sunlight 3s ease-in-out;
+    height: 100%;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.light-animation::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(ellipse at center, rgba(255, 235, 59, 0.7) 0%, rgba(255, 235, 59, 0) 70%);
+    animation: sunlightAnim 2s ease-in-out;
+}
+
+.light-animation::after {
+    content: '☀️';
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 24px;
+    animation: sunRotateAnim 2s ease-in-out;
 }
 
 .fertilize-animation {
     position: absolute;
-    bottom: 40%;
+    bottom: 20%;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.fertilize-animation::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    height: 20px;
+    background-color: rgba(76, 175, 80, 0.4);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    animation: fertilizerSpreadAnim 2s ease-in-out;
+}
+
+.fertilize-animation::after {
+    content: '🌱';
+    position: absolute;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 100px;
-    height: 50px;
-    background: url('/images/effects/fertilize-effect.png') no-repeat center;
-    background-size: contain;
-    animation: fertilizer 2s ease-in;
-    opacity: 0;
+    font-size: 24px;
+    animation: growUpAnim 2s ease-in-out;
 }
 
 .prune-animation {
     position: absolute;
-    top: 30%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 80px;
-    background: url('/images/effects/prune-effect.png') no-repeat center;
-    background-size: contain;
-    animation: pruning 1.5s ease-in-out;
-    opacity: 0;
+    top: 20%;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    z-index: 20;
+    pointer-events: none;
 }
 
-/* 收获动画 */
+.prune-animation::before,
+.prune-animation::after {
+    content: '✂️';
+    position: absolute;
+    font-size: 24px;
+    animation: pruneSnipAnim 2s ease-in-out;
+}
+
+.prune-animation::before {
+    top: 30%;
+    left: 20%;
+    animation-delay: 0.3s;
+}
+
+.prune-animation::after {
+    top: 60%;
+    right: 20%;
+    animation-delay: 0.8s;
+}
+
 .harvest-animation {
     position: absolute;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100px;
-    height: 100px;
-    background: url('/images/effects/harvest-effect.png') no-repeat center;
-    background-size: contain;
-    animation: harvestEffect 2s ease-in-out;
-    opacity: 0;
+    top: 30%;
+    left: 0;
+    width: 100%;
+    height: 60%;
+    z-index: 20;
+    pointer-events: none;
 }
 
-@keyframes harvestEffect {
+.harvest-animation::before {
+    content: '🍎';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 32px;
+    animation: harvestPopAnim 2s ease-in-out;
+}
+
+@keyframes waterDropAnim {
     0% {
         opacity: 0;
-        transform: translateX(-50%) scale(0.5);
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    80% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes waterFlowAnim {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
     }
 
     30% {
-        opacity: 1;
-        transform: translateX(-50%) scale(1.2);
+        opacity: 0.8;
+        transform: translateY(0);
     }
 
     70% {
-        opacity: 1;
-        transform: translateX(-50%) scale(1);
+        opacity: 0.8;
     }
 
     100% {
         opacity: 0;
-        transform: translateX(-50%) scale(1.1);
+        transform: translateY(10px);
     }
 }
 
-/* 动画关键帧 */
-@keyframes bounce {
+@keyframes dropFallAnim {
     0% {
-        transform: translateY(0);
-    }
-
-    100% {
-        transform: translateY(-5px);
-    }
-}
-
-@keyframes float {
-    0% {
-        transform: translateY(0) rotate(0);
-    }
-
-    100% {
-        transform: translateY(-5px) rotate(5deg);
-    }
-}
-
-@keyframes waterDrop {
-    0% {
-        opacity: 1;
+        opacity: 0.8;
         transform: translateX(-50%) translateY(0);
     }
 
     80% {
-        opacity: 0.8;
+        opacity: 0.6;
+        transform: translateX(-50%) translateY(80px);
     }
 
     100% {
@@ -1091,17 +1194,17 @@ watch(() => props.plant.id, () => {
     }
 }
 
-@keyframes sunlight {
+@keyframes sunlightAnim {
     0% {
         opacity: 0;
     }
 
     30% {
-        opacity: 0.7;
+        opacity: 0.8;
     }
 
     70% {
-        opacity: 0.7;
+        opacity: 0.8;
     }
 
     100% {
@@ -1109,179 +1212,122 @@ watch(() => props.plant.id, () => {
     }
 }
 
-@keyframes fertilizer {
+@keyframes sunRotateAnim {
     0% {
         opacity: 0;
-        transform: translateX(-50%) translateY(-20px);
+        transform: scale(0.5) rotate(0deg);
     }
 
-    20% {
+    30% {
         opacity: 1;
+        transform: scale(1.2) rotate(180deg);
+    }
+
+    70% {
+        opacity: 1;
+        transform: scale(1) rotate(360deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.5) rotate(540deg);
+    }
+}
+
+@keyframes fertilizerSpreadAnim {
+    0% {
+        transform: scaleX(0.2);
+        opacity: 0;
+    }
+
+    40% {
+        transform: scaleX(1);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scaleX(1.1);
+        opacity: 0;
+    }
+}
+
+@keyframes growUpAnim {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px) scale(0.5);
+    }
+
+    40% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
     }
 
     80% {
         opacity: 1;
-        transform: translateX(-50%) translateY(0);
+        transform: translateX(-50%) translateY(-10px) scale(1.1);
     }
 
     100% {
         opacity: 0;
-        transform: translateX(-50%) translateY(10px);
+        transform: translateX(-50%) translateY(-15px) scale(0.8);
     }
 }
 
-@keyframes pruning {
+@keyframes pruneSnipAnim {
     0% {
+        transform: scale(0.5) rotate(-30deg);
         opacity: 0;
-        transform: translateX(-60%) rotate(-30deg);
     }
 
     20% {
+        transform: scale(1) rotate(0deg);
         opacity: 1;
     }
 
     40% {
-        transform: translateX(-40%) rotate(20deg);
+        transform: scale(1) rotate(15deg);
     }
 
     60% {
-        transform: translateX(-60%) rotate(-10deg);
+        transform: scale(1) rotate(0deg);
     }
 
     80% {
+        transform: scale(1) rotate(-15deg);
+    }
+
+    100% {
+        transform: scale(0.5) rotate(0deg);
+        opacity: 0;
+    }
+}
+
+@keyframes harvestPopAnim {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+
+    20% {
+        transform: translate(-50%, -50%) scale(1.2);
         opacity: 1;
-        transform: translateX(-40%) rotate(0);
     }
 
-    100% {
-        opacity: 0;
-        transform: translateX(-50%) rotate(0);
-    }
-}
-
-@keyframes harvestGlow {
-    0% {
-        opacity: 0;
-        transform: scale(0.8);
+    40% {
+        transform: translate(-50%, -50%) scale(1);
     }
 
-    50% {
-        opacity: 1;
-        transform: scale(1.2);
-    }
-
-    100% {
-        opacity: 0;
-        transform: scale(1);
-    }
-}
-
-/* 植物生长阶段动画 */
-@keyframes seedPulse {
-    0% {
-        transform: scale(1);
-    }
-
-    100% {
-        transform: scale(1.05);
-    }
-}
-
-@keyframes sproutGrow {
-    0% {
-        transform: translateY(2px) scale(0.98);
-    }
-
-    100% {
-        transform: translateY(-2px) scale(1.02);
-    }
-}
-
-@keyframes flowerBloom {
-    0% {
-        transform: rotate(-2deg);
-    }
-
-    100% {
-        transform: rotate(2deg);
-    }
-}
-
-@keyframes fruitRipe {
-    0% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.04);
-    }
-
-    100% {
-        transform: scale(1);
-    }
-}
-
-/* 新增动画效果 */
-/* 图片轻微晃动 */
-@keyframes sway {
-    0% {
-        transform: rotate(-2deg);
-    }
-
-    100% {
-        transform: rotate(2deg);
-    }
-}
-
-/* 呼吸效果 */
-@keyframes breathe {
-    0% {
-        transform: scale(1);
-    }
-
-    100% {
-        transform: scale(1.05);
-    }
-}
-
-/* 生长效果 */
-@keyframes grow {
-    0% {
-        transform: translateY(5px) scale(0.95);
-    }
-
-    100% {
-        transform: translateY(-5px) scale(1.05);
-    }
-}
-
-/* 水滴效果 */
-.water-effect {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 10px;
-    height: 10px;
-    background-color: #4fc3f7;
-    border-radius: 50%;
-    opacity: 0.8;
-    animation: dropFall 1.5s linear infinite;
-}
-
-@keyframes dropFall {
-    0% {
-        transform: translateX(-50%) translateY(0) scale(1);
-        opacity: 0.8;
+    60% {
+        transform: translate(-50%, -50%) scale(1.1);
     }
 
     80% {
-        transform: translateX(-50%) translateY(80px) scale(1.5);
-        opacity: 0.5;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
     }
 
     100% {
-        transform: translateX(-50%) translateY(100px) scale(2);
+        transform: translate(-50%, -150%) scale(0.8);
         opacity: 0;
     }
 }
@@ -1456,5 +1502,24 @@ watch(() => props.plant.id, () => {
     .completed-status {
         color: #a0a0a0;
     }
+}
+
+/* 添加进行中的动画效果 */
+@keyframes pulse {
+    0% {
+        opacity: 0.7;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.7;
+    }
+}
+
+.loading-animation {
+    animation: pulse 1.5s infinite;
 }
 </style>
