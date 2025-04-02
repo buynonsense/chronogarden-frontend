@@ -58,6 +58,9 @@
                         <el-button @click="$router.push('/care-records')" class="nav-button">
                             <span class="btn-icon">📝</span> 养护记录
                         </el-button>
+                        <el-button @click="$router.push('/my-garden')" class="nav-button">
+                            <span class="btn-icon">🌿</span> 我的花园
+                        </el-button>
                     </div>
                 </el-card>
             </el-col>
@@ -93,28 +96,6 @@
             </el-table>
             <el-empty v-else description="暂无需要关注的植物" class="empty-plants"></el-empty>
         </el-card>
-
-        <!-- 快速导航卡片 -->
-        <el-row :gutter="20" class="dashboard-section">
-            <el-col :xs="24" :sm="8">
-                <el-card class="nav-card">
-                    <template #header>
-                        <div class="nav-header">
-                            <span>我的花园</span>
-                            <el-icon>
-                                <Leaf />
-                            </el-icon>
-                        </div>
-                    </template>
-                    <div class="nav-content">
-                        <p>探索并照料您已领养的珍稀植物</p>
-                        <el-button type="primary" @click="$router.push('/my-garden')">进入花园</el-button>
-                    </div>
-                </el-card>
-            </el-col>
-
-            <!-- 其他导航卡片 -->
-        </el-row>
     </div>
 </template>
 

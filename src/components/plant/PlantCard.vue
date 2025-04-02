@@ -1,5 +1,14 @@
 <template>
-    <el-card class="plant-card" :body-style="{ padding: '0' }">
+    <el-card class="plant-card" :class="{ 'completed-card': !showCareActions && plant.isCompleted }"
+        :body-style="{ padding: '0' }">
+        <!-- 添加覆盖层，仅在植物图鉴模式且植物已完成时显示 -->
+        <div v-if="!showCareActions && plant.isCompleted" class="completed-overlay">
+            <div class="completed-badge">
+                <span class="completed-text">CLEAR</span>
+                <span class="completed-icon">🏆</span>
+            </div>
+        </div>
+
         <div class="plant-visual-container">
             <!-- 植物状态展示区 -->
             <div class="plant-visual" :class="plantStateClass">
@@ -126,11 +135,22 @@
 
             <!-- 按钮区域 -->
             <div class="plant-actions">
-                <!-- 植物图鉴中的操作按钮 -->
+                <!-- 植物图鉴模式下的操作按钮 -->
                 <div v-if="!showCareActions" class="catalog-actions">
-                    <el-button type="primary" @click="adoptPlant" class="adopt-button">
+                    <!-- 未领养状态显示领养按钮 -->
+                    <el-button v-if="!isAdopted" type="primary" @click="adoptPlant" class="adopt-button">
                         领养植物
                     </el-button>
+
+                    <!-- 已领养未完成状态显示养护中按钮 -->
+                    <el-button v-else-if="isUserPlant" type="success" @click="goToMyGarden" class="maintaining-button">
+                        养护中
+                    </el-button>
+
+                    <!-- 已完成状态不显示按钮 -->
+                    <div v-else-if="plant.isCompleted" class="completed-status">
+                        已完成
+                    </div>
                 </div>
 
                 <!-- 查看详情按钮根据不同场景有不同行为 -->
@@ -198,6 +218,10 @@ const showAnimation = ref(false);
 const animationClass = ref('');
 const isCompleted = ref(false);
 
+// 判断用户是否已领养此植物
+const isAdopted = ref(false);
+const isUserPlant = ref(false);
+
 // 修改加载植物生长状态的函数
 const loadPlantGrowthStatus = async () => {
     if (!props.plant.id) return;
@@ -223,6 +247,24 @@ const loadPlantGrowthStatus = async () => {
         });
     } catch (error) {
         console.error('获取植物生长状态失败:', error);
+    }
+};
+
+// 检查植物是否已被当前用户领养
+const checkPlantAdoptionStatus = async () => {
+    try {
+        const response = await axios.get('/api/plants/user/adopted');
+        const userPlants = response.data;
+
+        // 检查当前植物是否在用户已领养的植物列表中
+        isAdopted.value = userPlants.some(p => p.id === props.plant.id);
+
+        // 检查是当前用户的植物
+        isUserPlant.value = isAdopted.value && !props.plant.isCompleted;
+
+        console.log(`植物 ${props.plant.id} 领养状态: ${isAdopted.value}, 完成状态: ${props.plant.isCompleted}`);
+    } catch (error) {
+        console.error('检查植物领养状态失败:', error);
     }
 };
 
@@ -319,7 +361,12 @@ const getStatProgressStatus = (value) => {
 
 // 获取植物图片
 const getPlantImage = () => {
-    // 基于植物状态和生长阶段返回不同图片
+    // 在植物图鉴模式下统一使用 default_seed.png
+    if (!props.showCareActions) {
+        return `/images/plants/default_seed.png`;
+    }
+
+    // 我的花园模式下使用动态图片
     const type = props.plant.type || 'default';
     let statePrefix = '';
 
@@ -332,8 +379,6 @@ const getPlantImage = () => {
     }
 
     const stageSuffix = growthStage.value || 'seed';
-
-    // 构建图片路径
     return `/images/plants/${statePrefix}${type}_${stageSuffix}.png`;
 };
 
@@ -448,6 +493,13 @@ const adoptPlant = async () => {
             notes: '开始植物生长周期'
         });
 
+        // 立即更新状态，不需要等待页面刷新
+        isAdopted.value = true;
+        isUserPlant.value = true;
+
+        // 重新加载植物生长状态
+        await loadPlantGrowthStatus();
+
         ElMessage.success('成功领养植物！请前往"我的花园"照料它');
 
         // 可选：跳转到我的花园
@@ -464,9 +516,15 @@ const truncateDescription = (description) => {
     return description.length > maxLength ? description.slice(0, maxLength) + '...' : description;
 };
 
+// 新增：跳转到我的花园方法
+const goToMyGarden = () => {
+    router.push('/my-garden');
+};
+
 onMounted(() => {
     // 添加数据监听
     loadPlantGrowthStatus();
+    checkPlantAdoptionStatus();
 });
 
 // 监听植物ID变化，重新加载状态
@@ -1310,6 +1368,93 @@ watch(() => props.plant.id, () => {
     .popup-description,
     .popup-era {
         color: #e0e0e0;
+    }
+}
+
+/* 添加完成状态覆盖层样式 */
+.completed-card {
+    position: relative;
+    opacity: 0.8;
+    filter: brightness(0.7) grayscale(0.3);
+}
+
+.completed-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 30;
+    border-radius: var(--border-radius-large);
+}
+
+.completed-badge {
+    background-color: rgba(255, 215, 0, 0.9);
+    padding: 10px 20px;
+    border-radius: 15px;
+    color: #000;
+    font-weight: bold;
+    font-size: 24px;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: rotate(-15deg);
+    box-shadow: 0 0 20px gold;
+    animation: badgeGlow 2s infinite alternate;
+}
+
+.completed-text {
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.7);
+}
+
+.completed-icon {
+    font-size: 30px;
+}
+
+.maintaining-button {
+    width: 100%;
+    background-color: #67C23A !important;
+    border-color: #67C23A !important;
+    font-weight: 500;
+}
+
+.completed-status {
+    text-align: center;
+    padding: 8px;
+    color: #909399;
+    font-style: italic;
+}
+
+@keyframes badgeGlow {
+    0% {
+        box-shadow: 0 0 10px gold;
+    }
+
+    100% {
+        box-shadow: 0 0 25px gold, 0 0 40px rgba(255, 215, 0, 0.8);
+    }
+}
+
+/* 黑暗模式适配 */
+@media (prefers-color-scheme: dark) {
+    .maintaining-button {
+        background-color: rgba(103, 194, 58, 0.2) !important;
+        border-color: #67C23A !important;
+        color: #e0e0e0 !important;
+    }
+
+    .completed-badge {
+        background-color: rgba(255, 215, 0, 0.8);
+        color: #000;
+    }
+
+    .completed-status {
+        color: #a0a0a0;
     }
 }
 </style>

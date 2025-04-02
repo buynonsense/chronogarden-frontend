@@ -7,25 +7,43 @@
             <el-skeleton :rows="4" animated />
         </el-card>
 
-        <div v-else-if="myPlants.length === 0" class="empty-state">
-            <el-empty description="您的花园还没有植物">
-                <el-button type="primary" @click="$router.push('/plants')">
-                    前往植物图鉴领养植物
-                </el-button>
-            </el-empty>
-        </div>
+        <div v-else>
+            <!-- 添加标签页组件 -->
+            <el-tabs v-model="activeTab" class="garden-tabs">
+                <el-tab-pane label="养护中" name="active">
+                    <div v-if="activePlants.length === 0" class="empty-state">
+                        <el-empty description="您没有正在养护的植物">
+                            <el-button type="primary" @click="$router.push('/plants')">
+                                前往植物图鉴领养植物
+                            </el-button>
+                        </el-empty>
+                    </div>
+                    <div v-else class="plants-grid">
+                        <PlantCard v-for="plant in activePlants" :key="plant.id" :plant="plant"
+                            :showCareActions="true" />
+                    </div>
+                </el-tab-pane>
 
-        <div v-else class="plants-grid">
-            <PlantCard v-for="plant in myPlants" :key="plant.id" :plant="plant" :showCareActions="true">
-                <el-tag size="small" type="success" effect="plain"
-                    v-if="showCareActions && plant.isCompleted">已完成</el-tag>
-            </PlantCard>
+                <el-tab-pane label="已完成" name="completed">
+                    <div v-if="completedPlants.length === 0" class="empty-state">
+                        <el-empty description="您还没有完成养护的植物">
+                            <el-button type="primary" @click="activeTab = 'active'">
+                                查看养护中的植物
+                            </el-button>
+                        </el-empty>
+                    </div>
+                    <div v-else class="plants-grid">
+                        <PlantCard v-for="plant in completedPlants" :key="plant.id" :plant="plant"
+                            :showCareActions="true" />
+                    </div>
+                </el-tab-pane>
+            </el-tabs>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import PlantCard from '../components/plant/PlantCard.vue';
@@ -34,6 +52,16 @@ import axios from 'axios';
 const myPlants = ref([]);
 const loading = ref(true);
 const route = useRoute();
+const activeTab = ref('active'); // 默认显示"养护中"标签
+
+// 过滤植物为"养护中"和"已完成"两类
+const activePlants = computed(() => {
+    return myPlants.value.filter(plant => !plant.isCompleted);
+});
+
+const completedPlants = computed(() => {
+    return myPlants.value.filter(plant => plant.isCompleted);
+});
 
 // 加载用户的植物
 const loadUserPlants = async () => {
@@ -84,17 +112,36 @@ watch(() => route.path, () => {
     margin-bottom: 20px;
 }
 
+.garden-tabs {
+    margin-top: 20px;
+}
+
 .plants-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 25px;
-    margin-top: 30px;
+    margin-top: 20px;
 }
 
 .empty-state {
     margin: 60px auto;
     text-align: center;
     max-width: 500px;
+}
+
+/* 自定义标签页样式 */
+:deep(.el-tabs__item) {
+    font-size: 16px;
+    padding: 0 25px;
+}
+
+:deep(.el-tabs__item.is-active) {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+:deep(.el-tabs__active-bar) {
+    background-color: var(--primary-color);
 }
 
 @keyframes pulse {
@@ -114,6 +161,14 @@ watch(() => route.path, () => {
 @media (prefers-color-scheme: dark) {
     .garden-container {
         background-color: var(--bg-lightest);
+    }
+
+    :deep(.el-tabs__item) {
+        color: var(--text-secondary);
+    }
+
+    :deep(.el-tabs__item.is-active) {
+        color: var(--primary-light);
     }
 }
 </style>
