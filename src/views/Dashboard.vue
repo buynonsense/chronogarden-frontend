@@ -104,6 +104,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { getUserCareRecords } from '../api/careRecords';
 import { ElMessage } from 'element-plus';
+import axios from 'axios';
 
 const router = useRouter();
 const careRecords = ref([]);
@@ -154,37 +155,56 @@ const loadData = async () => {
         const response = await getUserCareRecords();
         careRecords.value = response.data;
 
-        // 模拟计算需要关注的植物
-        // 实际项目中应该有更复杂的逻辑来确定哪些植物需要关注
-        const plantMap = new Map();
-        careRecords.value.forEach(record => {
-            if (record.plant && record.plant.id) {
-                const plantId = record.plant.id;
-                if (!plantMap.has(plantId)) {
-                    plantMap.set(plantId, {
-                        id: plantId,
-                        name: record.plant.name || '未知植物',
-                        lastCareDate: record.timestamp,
-                        status: '需要关注'
-                    });
-                } else {
-                    const existing = plantMap.get(plantId);
-                    const recordDate = new Date(record.timestamp);
-                    const existingDate = new Date(existing.lastCareDate);
-                    if (recordDate > existingDate) {
-                        existing.lastCareDate = record.timestamp;
+        // 获取用户所有植物
+        const plantsResponse = await axios.get('/api/plants/user/adopted');
+        const userPlants = plantsResponse.data;
+
+        // 获取所有植物的生长状态，筛选出需要关注的植物
+        const plantsNeedingAttention = [];
+
+        for (const plant of userPlants) {
+            // 只处理未完成且未枯萎的植物
+            if (!plant.isCompleted && !plant.isWithered) {
+                try {
+                    // 获取每个植物的生长状态
+                    const statusResponse = await axios.get(`/api/plants/${plant.id}/growth-status`);
+                    const status = statusResponse.data;
+
+                    // 判断是否需要关注：任一值低于30
+                    if (status.waterLevel < 30 || status.lightLevel < 30 || status.nutrientLevel < 30) {
+                        // 确定具体哪个指标需要关注
+                        let attentionReason = [];
+                        if (status.waterLevel < 30) attentionReason.push('缺水');
+                        if (status.lightLevel < 30) attentionReason.push('缺光');
+                        if (status.nutrientLevel < 30) attentionReason.push('缺肥');
+
+                        plantsNeedingAttention.push({
+                            id: plant.id,
+                            name: plant.name,
+                            status: attentionReason.join('/'),
+                            lastCareDate: '需要养护'
+                        });
                     }
+                } catch (error) {
+                    console.error(`获取植物${plant.id}的状态失败:`, error);
                 }
             }
-        });
+        }
 
-        // 将Map转换为数组并格式化日期
-        plantsNeedingCare.value = Array.from(plantMap.values())
-            .map(plant => ({
-                ...plant,
-                lastCareDate: new Date(plant.lastCareDate).toLocaleDateString('zh-CN')
-            }))
-            .slice(0, 5); // 只取前5个
+        // 查找最后养护时间
+        for (let plant of plantsNeedingAttention) {
+            const plantRecords = careRecords.value.filter(record =>
+                record.plant && record.plant.id === plant.id
+            ).sort((a, b) =>
+                new Date(b.timestamp) - new Date(a.timestamp)
+            );
+
+            if (plantRecords.length > 0) {
+                plant.lastCareDate = new Date(plantRecords[0].timestamp).toLocaleDateString('zh-CN');
+            }
+        }
+
+        plantsNeedingCare.value = plantsNeedingAttention;
     } catch (error) {
         console.error('获取数据失败:', error);
         ElMessage.error('获取数据失败');
@@ -364,6 +384,11 @@ onMounted(() => {
     font-size: 0.9em;
     padding: 4px 8px;
     border-radius: 20px !important;
+    white-space: nowrap;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .view-btn {
