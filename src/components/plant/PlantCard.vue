@@ -82,6 +82,11 @@
                 <span class="reminder-icon">⏰</span>
                 <span class="reminder-text">果实成熟，请及时收获!</span>
             </div>
+
+            <!-- 在植物卡片中添加插槽允许额外操作按钮 -->
+            <div class="plant-extra-actions" v-if="$slots['extra-actions']">
+                <slot name="extra-actions"></slot>
+            </div>
         </div>
 
         <!-- 植物信息 -->
@@ -1731,5 +1736,22 @@ watch(() => props.plant.id, () => {
     width: 100%;
     display: flex;
     justify-content: center;
+}
+
+/* 添加额外操作按钮的样式 */
+.plant-extra-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 20;
+    display: flex;
+    gap: 5px;
+}
+
+/* 确保在深色模式下样式也正确 */
+@media (prefers-color-scheme: dark) {
+    .plant-extra-actions button {
+        background-color: rgba(70, 70, 70, 0.8);
+    }
 }
 </style>
