@@ -496,7 +496,7 @@ const triggerGrowthAnimation = () => {
 const getActionTagType = (actionType) => {
     const typeMap = {
         '浇水': 'primary',
-        '阳光': 'info', // 新增光照标签类型
+        '阳光': 'info',
         '施肥': 'success',
         '修剪': 'warning',
         '收获': 'success',

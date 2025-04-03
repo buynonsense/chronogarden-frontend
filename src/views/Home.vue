@@ -23,7 +23,7 @@
                                 <h3>穿越时空 <span class="emoji">🕰️</span></h3>
                             </div>
                         </template>
-                        <p>探索不同历史时期的环境与植物，从远古时代到遥远的未来</p>
+                        <p>探索不同历史时期的环境与植物，从远古时代到近代</p>
                         <div class="card-icon">🌎</div>
                     </el-card>
                 </el-col>

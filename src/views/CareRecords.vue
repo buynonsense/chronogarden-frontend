@@ -15,6 +15,8 @@
                 <el-form-item label="操作类型">
                     <el-select v-model="filters.actionType" placeholder="选择操作类型" clearable @change="filterRecords">
                         <el-option v-for="type in actionTypes" :key="type" :label="type" :value="type"></el-option>
+                        <el-option label="正常衰减" value="正常衰减"></el-option>
+                        <el-option label="随机衰减" value="随机衰减"></el-option>
                     </el-select>
                 </el-form-item>
                 <el-form-item>
@@ -258,6 +260,25 @@ const actionTypes = computed(() => {
     });
     return Array.from(types);
 });
+
+// 获取操作类型的标签样式
+const getActionTagType = (actionType) => {
+    if (actionType.startsWith('随机事件-')) {
+        return 'danger'; // 所有随机事件都用红色标签
+    }
+
+    switch (actionType) {
+        case '浇水': return 'info';
+        case '阳光': return 'warning';
+        case '施肥': return 'success';
+        case '修剪': return 'warning';
+        case '领养植物': return 'primary';
+        case '收获': return 'success';
+        case '重新养护': return 'primary';
+        case '正常衰减': return 'danger';
+        default: return 'info';
+    }
+};
 
 onMounted(() => {
     loadRecords();

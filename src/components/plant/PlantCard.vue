@@ -161,8 +161,9 @@
                     </el-button>
 
                     <!-- 已领养未完成状态显示养护中按钮 -->
-                    <el-button v-else-if="isUserPlant" type="success" @click="goToMyGarden" class="maintaining-button">
-                        养护中
+                    <el-button v-else-if="isUserPlant" type="success" @click="goToMyGarden" class="maintaining-button"
+                        :loading="navigatingToGarden">
+                        {{ navigatingToGarden ? '跳转中...' : '养护中' }}
                     </el-button>
 
                     <!-- 已完成状态不显示按钮 -->
@@ -237,6 +238,7 @@ const animationClass = ref('');
 const isCompleted = ref(false);
 const isOnCooldown = ref(false); // 冷却状态变量
 const isHarvestReminderFading = ref(false); // 新增：收获提示淡出状态
+const navigatingToGarden = ref(false); // 新增：跳转到我的花园加载状态
 
 // 判断用户是否已领养此植物
 const isAdopted = ref(false);
@@ -603,9 +605,16 @@ const truncateDescription = (description) => {
     return description.length > maxLength ? description.slice(0, maxLength) + '...' : description;
 };
 
-// 新增：跳转到我的花园方法
+// 修改跳转到我的花园方法
 const goToMyGarden = () => {
-    router.push('/my-garden');
+    // 设置加载状态
+    navigatingToGarden.value = true;
+
+    // 添加短暂延迟，让按钮显示加载状态
+    setTimeout(() => {
+        router.push('/my-garden');
+        // 路由跳转后可以重置状态，但实际上不需要，因为组件会被销毁
+    }, 300);
 };
 
 // 查看植物详情
@@ -1570,29 +1579,35 @@ watch(() => props.plant.id, () => {
     }
 }
 
-/* 添加完成状态覆盖层样式 */
-.completed-card {
-    position: relative;
-    opacity: 0.8;
-    filter: brightness(0.7) grayscale(0.3);
-}
-
+/* 修改完成状态覆盖层样式 */
 .completed-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    /* 修改为渐变金色背景，营造高级感 */
+    background: linear-gradient(135deg, rgba(218, 165, 32, 0.3), rgba(184, 134, 11, 0.5));
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 30;
     border-radius: var(--border-radius-large);
+    /* 添加内部阴影效果 */
+    box-shadow: inset 0 0 50px rgba(255, 215, 0, 0.2);
 }
 
+/* 修改已完成卡片的滤镜效果，减少灰度，增加亮度 */
+.completed-card {
+    position: relative;
+    opacity: 0.95;
+    /* 调整滤镜，减少灰度，增加对比度和亮度 */
+    filter: brightness(0.9) grayscale(0.2) contrast(1.1);
+}
+
+/* 增强CLEAR徽章效果，确保在金色背景上有更好的辨识度 */
 .completed-badge {
-    background-color: rgba(255, 215, 0, 0.9);
+    background-color: rgba(255, 215, 0, 0.95);
     padding: 10px 20px;
     border-radius: 15px;
     color: #000;
@@ -1603,23 +1618,59 @@ watch(() => props.plant.id, () => {
     align-items: center;
     gap: 10px;
     transform: rotate(-15deg);
-    box-shadow: 0 0 20px gold;
+    /* 增强阴影效果 */
+    box-shadow: 0 0 25px gold, 0 0 40px rgba(255, 255, 255, 0.6);
+    /* 添加边框增加区分度 */
+    border: 2px solid rgba(255, 255, 255, 0.8);
     animation: badgeGlow 2s infinite alternate;
 }
 
-.completed-text {
-    text-shadow: 0 0 5px rgba(255, 255, 255, 0.7);
+/* 修改徽章发光效果 */
+@keyframes badgeGlow {
+    0% {
+        box-shadow: 0 0 15px gold, 0 0 30px rgba(255, 255, 255, 0.4);
+    }
+
+    100% {
+        box-shadow: 0 0 30px gold, 0 0 50px rgba(255, 255, 255, 0.7);
+    }
 }
 
-.completed-icon {
-    font-size: 30px;
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+    .completed-overlay {
+        /* 深色模式下使用更暗的金色调，但保持足够的亮度 */
+        background: linear-gradient(135deg, rgba(184, 134, 11, 0.4), rgba(139, 69, 19, 0.6));
+        /* 增加发光效果以在暗色环境中突出显示 */
+        box-shadow: inset 0 0 50px rgba(255, 215, 0, 0.3);
+    }
+
+    .completed-badge {
+        /* 深色模式下增强对比度 */
+        background-color: rgba(255, 215, 0, 0.9);
+        color: #000;
+        /* 加强边框 */
+        border: 2px solid rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 25px gold, 0 0 40px rgba(255, 215, 0, 0.7);
+    }
+
+    /* 深色模式下徽章发光效果增强 */
+    @keyframes badgeGlow {
+        0% {
+            box-shadow: 0 0 20px gold, 0 0 35px rgba(255, 215, 0, 0.5);
+        }
+
+        100% {
+            box-shadow: 0 0 35px gold, 0 0 60px rgba(255, 215, 0, 0.8);
+        }
+    }
 }
 
-.maintaining-button {
-    width: 100%;
-    background-color: #67C23A !important;
-    border-color: #67C23A !important;
-    font-weight: 500;
+/* 添加完成状态覆盖层样式 */
+.completed-card {
+    position: relative;
+    opacity: 0.8;
+    filter: brightness(0.7) grayscale(0.3);
 }
 
 .completed-status {
