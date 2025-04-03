@@ -33,40 +33,52 @@
 
             <!-- 养护操作按钮区域 - 仅在我的花园中显示 -->
             <div class="care-actions" v-if="showCareActions">
-                <button class="care-button water-button" @click="performCare('浇水')"
-                    :disabled="isWithered || isOnCooldown">
-                    <span class="button-icon">💧</span>
-                    <span class="button-text">浇水</span>
-                </button>
+                <!-- 当植物枯萎时显示重新养护按钮 -->
+                <div v-if="isWithered" class="withered-actions">
+                    <button class="care-button restart-button" @click="restartGrowth" :disabled="isOnCooldown">
+                        <span class="button-icon">🔄</span>
+                        <span class="button-text">重新养护</span>
+                    </button>
+                </div>
 
-                <button class="care-button light-button" @click="performCare('阳光')"
-                    :disabled="isWithered || isOnCooldown">
-                    <span class="button-icon">☀️</span>
-                    <span class="button-text">阳光</span>
-                </button>
+                <!-- 原有养护操作按钮，在非枯萎状态显示 -->
+                <template v-else>
+                    <button class="care-button water-button" @click="performCare('浇水')"
+                        :disabled="isWithered || isOnCooldown || isCompleted">
+                        <span class="button-icon">💧</span>
+                        <span class="button-text">浇水</span>
+                    </button>
 
-                <button class="care-button fertilize-button" @click="performCare('施肥')"
-                    :disabled="isWithered || isOnCooldown">
-                    <span class="button-icon">🌱</span>
-                    <span class="button-text">施肥</span>
-                </button>
+                    <button class="care-button light-button" @click="performCare('阳光')"
+                        :disabled="isWithered || isOnCooldown || isCompleted">
+                        <span class="button-icon">☀️</span>
+                        <span class="button-text">阳光</span>
+                    </button>
 
-                <button class="care-button prune-button" @click="performCare('修剪')"
-                    :disabled="isWithered || isOnCooldown">
-                    <span class="button-icon">✂️</span>
-                    <span class="button-text">修剪</span>
-                </button>
+                    <button class="care-button fertilize-button" @click="performCare('施肥')"
+                        :disabled="isWithered || isOnCooldown || isCompleted">
+                        <span class="button-icon">🌱</span>
+                        <span class="button-text">施肥</span>
+                    </button>
 
-                <!-- 添加收获按钮 -->
-                <button v-if="growthStage === 'fruit' && !isWithered" class="care-button harvest-button"
-                    @click="performCare('收获')" :disabled="isOnCooldown">
-                    <span class="button-icon">🍎</span>
-                    <span class="button-text">收获</span>
-                </button>
+                    <button class="care-button prune-button" @click="performCare('修剪')"
+                        :disabled="isWithered || isOnCooldown || isCompleted">
+                        <span class="button-icon">✂️</span>
+                        <span class="button-text">修剪</span>
+                    </button>
+
+                    <!-- 添加收获按钮 -->
+                    <button v-if="growthStage === 'fruit' && !isWithered" class="care-button harvest-button"
+                        @click="performCare('收获')" :disabled="isOnCooldown || isCompleted">
+                        <span class="button-icon">🍎</span>
+                        <span class="button-text">收获</span>
+                    </button>
+                </template>
             </div>
 
-            <!-- 添加收获提示，当植物到达结果期时显示 -->
-            <div v-if="showCareActions && growthStage === 'fruit' && !isWithered" class="harvest-reminder">
+            <!-- 修改收获提示显示条件 -->
+            <div v-if="showCareActions && growthStage === 'fruit' && !isWithered && !isCompleted"
+                class="harvest-reminder" :class="{ 'fade-out': isHarvestReminderFading }">
                 <span class="reminder-icon">⏰</span>
                 <span class="reminder-text">果实成熟，请及时收获!</span>
             </div>
@@ -99,7 +111,8 @@
                     <span>生长周期: {{ getGrowthStageText() }}</span>
                     <span>{{ growthDays }}/14天</span>
                 </div>
-                <el-progress :percentage="Math.min(100, (growthDays / 14) * 100)" :status="growthProgressStatus">
+                <el-progress :percentage="Math.min(100, Math.round((growthDays / 14) * 100))"
+                    :status="growthProgressStatus">
                 </el-progress>
             </div>
 
@@ -162,7 +175,7 @@
                 <el-popover v-if="!showCareActions" placement="top" :width="300" trigger="click">
                     <template #reference>
                         <el-button type="default" class="details-button">
-                            查看详情
+                            详情介绍
                         </el-button>
                     </template>
                     <template #default>
@@ -223,6 +236,7 @@ const showAnimation = ref(false);
 const animationClass = ref('');
 const isCompleted = ref(false);
 const isOnCooldown = ref(false); // 冷却状态变量
+const isHarvestReminderFading = ref(false); // 新增：收获提示淡出状态
 
 // 判断用户是否已领养此植物
 const isAdopted = ref(false);
@@ -245,6 +259,7 @@ const loadPlantGrowthStatus = async () => {
         growthDays.value = Number(data.growthDays || 0);
         isWithered.value = Boolean(data.isWithered);
         growthStarted.value = Number(data.growthDays || 0) > 0;
+        isCompleted.value = Boolean(data.isCompleted);
 
         console.log('加载的植物状态:', {
             waterLevel: waterLevel.value,
@@ -358,11 +373,11 @@ const getGrowthStageEmoji = () => {
     }
 };
 
-// 获取属性进度条状态
+// 修改获取状态进度条状态的方法
 const getStatProgressStatus = (value) => {
     if (value === 0) return 'exception';
     if (value <= 30) return 'warning';
-    return 'normal';
+    return '';  // 返回空字符串而不是 'normal'
 };
 
 // 获取植物图片
@@ -390,7 +405,7 @@ const getPlantImage = () => {
 
 // 执行养护操作
 const performCare = async (actionType) => {
-    if (isWithered.value || isOnCooldown.value) return;
+    if (isWithered.value || isOnCooldown.value || isCompleted.value) return;
 
     // 设置冷却状态
     isOnCooldown.value = true;
@@ -413,30 +428,50 @@ const performCare = async (actionType) => {
         switch (actionType) {
             case '浇水':
                 animationClass.value = 'water-animation';
-                waterLevel.value = Math.min(100, waterLevel.value + 60);
+                // 先调用后端API
+                await axios.post(`/api/plants/${props.plant.id}/water`);
+                // 只在前端临时更新，保持视觉反馈一致性
+                waterLevel.value = Math.min(100, waterLevel.value + 30); // 与后端一致的值
                 break;
 
             case '阳光':
                 animationClass.value = 'light-animation';
-                lightLevel.value = Math.min(100, lightLevel.value + 60);
+                // 先尝试直接调用后端接口
+                await axios.post(`/api/plants/${props.plant.id}/light`);
+                // 只在前端临时更新，保持视觉反馈
+                lightLevel.value = Math.min(100, lightLevel.value + 30); // 与后端一致的值
                 break;
 
             case '施肥':
                 animationClass.value = 'fertilize-animation';
-                nutrientLevel.value = Math.min(100, nutrientLevel.value + 60);
+                // 先调用后端API
+                await axios.post(`/api/plants/${props.plant.id}/fertilize`);
+                // 前端临时更新
+                nutrientLevel.value = Math.min(100, nutrientLevel.value + 30); // 与后端一致的值
                 break;
 
+            // 修剪操作处理
             case '修剪':
                 animationClass.value = 'prune-animation';
-                // 修剪可能影响所有生长参数
-                waterLevel.value = Math.min(100, waterLevel.value + 15);
-                lightLevel.value = Math.min(100, lightLevel.value + 25);
-                nutrientLevel.value = Math.min(100, nutrientLevel.value + 20);
+                // 先调用后端API
+                await axios.post(`/api/plants/${props.plant.id}/prune`);
+                // 前端临时更新状态值
+                waterLevel.value = Math.min(100, waterLevel.value + 10);
+                lightLevel.value = Math.min(100, lightLevel.value + 15);
+                nutrientLevel.value = Math.min(100, nutrientLevel.value + 20);// 与后端一致的值
                 break;
 
             case '收获':
                 animationClass.value = 'harvest-animation';
                 // 收获不需要更新水分等属性，因为这是完成操作
+                const response = await axios.post(`/api/plants/${props.plant.id}/harvest`);
+                if (response.data.isCompleted) {
+                    // 添加淡出动画
+                    isHarvestReminderFading.value = true;
+                    ElMessage.success('恭喜！您已成功收获并完成了这株植物的培育！');
+                    // 更新植物状态
+                    isCompleted.value = true;
+                }
                 break;
         }
 
@@ -452,18 +487,6 @@ const performCare = async (actionType) => {
             notes: `执行了${actionType}操作`
         });
 
-        // 如果是收获操作，调用特定API
-        if (actionType === '收获') {
-            const response = await axios.post(`/api/plants/${props.plant.id}/harvest`);
-            if (response.data.isCompleted) {
-                ElMessage.success('恭喜！您已成功收获并完成了这株植物的培育！');
-                // 更新植物状态
-                isCompleted.value = true;
-            }
-        } else {
-            // 其他养护操作API请求...
-        }
-
         // 重新加载植物状态
         await loadPlantGrowthStatus();
 
@@ -471,6 +494,53 @@ const performCare = async (actionType) => {
     } catch (error) {
         console.error(`${actionType}失败:`, error);
         ElMessage.error(`${actionType}失败，请稍后再试`);
+    } finally {
+        // 关闭加载提示
+        loading.close();
+
+        // 冷却结束后重置状态
+        isOnCooldown.value = false;
+    }
+};
+
+// 新增：重新养护植物方法
+const restartGrowth = async () => {
+    if (isOnCooldown.value) return;
+
+    // 设置冷却状态
+    isOnCooldown.value = true;
+
+    // 显示加载提示
+    const loading = ElLoading.service({
+        lock: true,
+        text: '重新养护中...',
+        background: 'rgba(0, 0, 0, 0.6)'
+    });
+
+    // 延时3秒模拟操作过程
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    try {
+        // 调用重新养护接口
+        await axios.post(`/api/plants/${props.plant.id}/start-growth`);
+
+        // 添加养护记录
+        await addCareRecord({
+            plant: { id: props.plant.id },
+            actionType: '重新养护',
+            notes: '重新开始植物生长周期'
+        });
+
+        // 更新状态
+        isWithered.value = false;
+
+        // 重新加载植物状态
+        await loadPlantGrowthStatus();
+
+        ElMessage.success('植物已重新开始养护！');
+    } catch (error) {
+        console.error('重新养护失败:', error);
+        ElMessage.error('重新养护失败，请稍后再试');
     } finally {
         // 关闭加载提示
         loading.close();
@@ -541,6 +611,26 @@ const goToMyGarden = () => {
 // 查看植物详情
 const viewDetails = () => {
     router.push(`/plant/${props.plant.id}`);
+};
+
+// 新增：执行养护操作方法
+const performCareAction = async (actionType) => {
+    if (isOnCooldown.value) return;
+
+    isOnCooldown.value = true;
+
+    try {
+        await axios.post(`/api/plants/${plantId}/light`);
+        ElMessage.success('阳光操作成功！');
+
+        // 重新加载植物状态
+        await loadPlantGrowthStatus();
+    } catch (error) {
+        console.error('阳光操作失败:', error);
+        ElMessage.error('阳光操作失败，请稍后再试');
+    } finally {
+        isOnCooldown.value = false;
+    }
 };
 
 onMounted(() => {
@@ -751,6 +841,36 @@ watch(() => props.plant.id, () => {
     border-color: #ffc107;
 }
 
+.restart-button {
+    background-color: #4caf50;
+    border-color: #2e7d32;
+    color: white;
+    min-width: 120px;
+    animation: pulse-attention 2s infinite;
+}
+
+.restart-button .button-icon {
+    color: white;
+}
+
+.restart-button:hover {
+    background-color: #2e7d32;
+}
+
+@keyframes pulse-attention {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
 /* 收获提示样式 */
 .harvest-reminder {
     position: absolute;
@@ -768,6 +888,22 @@ watch(() => props.plant.id, () => {
     z-index: 20;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     animation: pulse 2s infinite;
+}
+
+.harvest-reminder.fade-out {
+    animation: fadeOutReminder 1s forwards;
+}
+
+@keyframes fadeOutReminder {
+    from {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.8);
+    }
 }
 
 .reminder-icon {
@@ -934,6 +1070,15 @@ watch(() => props.plant.id, () => {
     .harvest-button {
         background-color: rgba(255, 193, 7, 0.2) !important;
         border-color: #ffc107 !important;
+    }
+
+    .restart-button {
+        background-color: rgba(76, 175, 80, 0.8);
+        border-color: rgba(46, 125, 50, 0.8);
+    }
+
+    .restart-button:hover {
+        background-color: rgba(46, 125, 50, 0.9);
     }
 
     .care-actions {
@@ -1529,5 +1674,11 @@ watch(() => props.plant.id, () => {
 
 .loading-animation {
     animation: pulse 1.5s infinite;
+}
+
+.withered-actions {
+    width: 100%;
+    display: flex;
+    justify-content: center;
 }
 </style>
