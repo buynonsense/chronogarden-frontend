@@ -307,17 +307,21 @@ const getPlantAnimationSrc = () => {
     const status = plantStatus.value.healthStatus || 50;
 
     let statePrefix = '';
+    let fileExtension = '.gif'; // 默认使用gif动画
+
     if (status === 0) {
         statePrefix = 'withered_';
+        fileExtension = '.png'; // 枯萎状态使用静态图片
     } else if (status <= 30) {
         statePrefix = 'endangered_';
+        fileExtension = '.png'; // 濒危状态使用静态图片
     } else if (status <= 79) {
         statePrefix = '';
     } else {
         statePrefix = 'healthy_';
     }
 
-    return `/images/plants/${statePrefix}${type}_${stage}.gif`;
+    return `/images/plants/${statePrefix}${type}_${stage}${fileExtension}`;
 };
 
 // 执行养护操作
