@@ -21,8 +21,8 @@
                     <div v-else class="plants-grid">
                         <PlantCard v-for="plant in activePlants" :key="plant.id" :plant="plant" :showCareActions="true"
                             @data-updated="loadUserPlants">
-                            <!-- 添加查看统计数据按钮插槽 -->
-                            <template #extra-actions>
+                            <!-- 将插槽名称从extra-actions改为action-buttons -->
+                            <template #action-buttons>
                                 <el-button type="info" size="small" @click.stop="showPlantChart(plant)"
                                     class="chart-button">
                                     <i class="chart-icon">📊</i> 状态图

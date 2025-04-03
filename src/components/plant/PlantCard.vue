@@ -177,29 +177,16 @@
                     </div>
                 </div>
 
-                <!-- 查看详情按钮根据不同场景有不同行为 -->
-                <el-popover v-if="!showCareActions" placement="top" :width="300" trigger="click">
-                    <template #reference>
-                        <el-button type="default" class="details-button">
-                            详情介绍
+                <!-- 我的花园模式下，调整按钮布局 -->
+                <div v-else class="garden-actions">
+                    <div class="button-group">
+                        <el-button type="default" @click="viewDetails" class="details-button">
+                            查看详情
                         </el-button>
-                    </template>
-                    <template #default>
-                        <h4>{{ plant.name }}</h4>
-                        <p class="popup-scientific-name">{{ plant.scientificName }}</p>
-                        <div class="popup-description">
-                            {{ plant.description || '暂无详细描述' }}
-                        </div>
-                        <div class="popup-era" v-if="plant.era">
-                            <strong>时代:</strong> {{ plant.era }}
-                        </div>
-                    </template>
-                </el-popover>
-
-                <!-- 我的花园模式下，仍然跳转到详情页 -->
-                <el-button v-else type="default" @click="viewDetails" class="details-button">
-                    查看详情
-                </el-button>
+                        <!-- 添加插槽位置，用于状态图按钮 -->
+                        <slot name="action-buttons"></slot>
+                    </div>
+                </div>
             </div>
         </div>
     </el-card>
@@ -1738,6 +1725,53 @@ watch(() => props.plant.id, () => {
     justify-content: center;
 }
 
+/* 按钮组样式优化 */
+.button-group {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.details-button {
+    flex: 2;
+}
+
+/* 移除之前的extra-actions位置样式 */
+.plant-extra-actions {
+    display: none;
+}
+
+/* 状态图按钮样式优化 */
+:deep(.chart-button) {
+    flex: 1;
+    padding: 0 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    background-color: rgba(64, 158, 255, 0.1);
+    border-color: rgba(64, 158, 255, 0.2);
+    transition: all 0.3s;
+}
+
+:deep(.chart-button:hover) {
+    background-color: rgba(64, 158, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+    :deep(.chart-button) {
+        background-color: rgba(64, 158, 255, 0.15);
+        border-color: rgba(64, 158, 255, 0.3);
+    }
+
+    :deep(.chart-button:hover) {
+        background-color: rgba(64, 158, 255, 0.25);
+    }
+}
+
 /* 添加额外操作按钮的样式 */
 .plant-extra-actions {
     position: absolute;
@@ -1753,5 +1787,21 @@ watch(() => props.plant.id, () => {
     .plant-extra-actions button {
         background-color: rgba(70, 70, 70, 0.8);
     }
+}
+
+/* 添加按钮组样式 */
+.button-group {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+}
+
+.details-button {
+    flex: 1;
+}
+
+:deep(.chart-button) {
+    padding: 8px 12px;
+    height: auto;
 }
 </style>
